@@ -1,17 +1,23 @@
-# Chapter 10 — Telemetry & Monitoring
+# Chapter 10 — Telemetry & PMBus
+
+> 📖 **Read first:** [AI Data Center Guide — Part 4.12: Metering, Power Quality, Monitoring & Electrical Operations](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-12-metering-power-quality-monitoring-and-electrical-operations)
 
 > 🚧 **Status:** Architecture placeholder — content to be populated.
 
-## Overview
+## What This Chapter Covers (That the Guide Doesn't)
 
-Real-time power monitoring at rack, PDU, and chip level. You can't optimize what you don't measure.
+The guide covers sub-cycle power-quality capture and metering strategy. This chapter goes deeper into:
+
+- **PMBus protocol deep-dive** — command set, VOUT_MODE, LOADLINE, IOUT_CAL_GAIN, POUT_MAX, fault logging
+- **Hall-effect sensor signal conditioning** — bandwidth, accuracy, offset drift, IC selection (Allegro, Melexis)
+- **DAQ architecture** — sampling rate vs bandwidth, aliasing, anti-alias filtering
+- **Redfish polling** — API endpoints for power data, JSON schema, integration with time-series DBs
 
 ## Key Concepts (To Be Developed)
 
-- Hall-effect current sensors at the PDU
-- PMBus protocol for VRM telemetry
-- IPMI/Redfish for platform-level power data
-- DCIM platforms (Schneider EcoStruxure, Vertiv Trellis)
-- Time-series databases for power trend analysis
+- PMBus command hierarchy: Configuration → Monitoring → Fault Management
+- Current sensing: Hall effect vs shunt + isolation amp vs CT — accuracy/bandwidth/cost tradeoffs
+- Signal chain: sensor → conditioning → ADC → processor → protocol → DCIM
+- Telemetry-driven control: dynamic power capping, workload throttling feedback
 
 *Content will be developed step by step with Augusto.*

@@ -1,106 +1,104 @@
-# AI Data Center Power Systems — Engineering Reference Book
+# AI Data Center Power Systems — The System Engineer's Circuit-Level Companion
 
-**From Grid to Chip — Mastering Power Delivery, Solid-State Transformers, GPU Load Transients, and Liquid Cooling for AI-Scale Infrastructure**
+**From MV to Die — Circuit Engineering, SPICE Simulation, and Interactive Exploration of the Power Delivery Chain**
 
 ---
 
 ## About This Book
 
-This is a living engineering reference and interactive simulation environment for systems engineers working on AI data center power infrastructure. It covers the complete power chain — from utility grid interconnection down to the GPU die — with live, in-browser simulations of core electrical concepts.
+This is **not** another architecture-level reference. The [AI Data Center Guide](https://aidatacenterguide.com) already covers that ground comprehensively — 166 chapters at practitioner depth, spanning siting, strategy, power topology, cooling, networking, and operations.
 
-**What you'll learn:**
-- The full power delivery chain: MV switchgear → transformer → PDU → busway → rack PDU → VRM → GPU
-- Solid-State Transformer (SST) topologies: DAB, LLC resonant, SiC/GaN device characteristics, bidirectional power flow
-- GPU power transients: dI/dt step response, decoupling network design, VRM multi-phase transient management
-- Cooling architectures: air-cooled limits, direct-to-chip liquid cooling, immersion, CDU design
-- 48VDC rack architectures (Open Compute), HVDC distribution, and DC microgrids
-- PUE, pPUE, and energy flow analysis with interactive thermal models
-- Telemetry, monitoring, and DCIM integration for real-time power management
+This book is the **engineer's deep-dive companion**: it goes below the architecture decisions into the circuit-level physics, component selection, SPICE simulation, and measurement methodology that the system engineer needs to actually specify, build, and validate the power chain from medium voltage down to the GPU die.
 
-> **Interactive Simulations:** Each chapter includes zero-build, browser-native simulation widgets (Canvas + parameter sliders) illustrating core electrical principles. No server, no build step — just open the page.
+**Where the guide tells you _what_ to decide, this book shows you _how_ to engineer it:**
+
+| The Guide covers | This book covers |
+|-----------------|-----------------|
+| "Choose ±400V or 800V DC architecture" | SiC MOSFET selection, DAB control loop compensation, magnetics design |
+| "Size the VRM for EDPp" | Multiphase VRM Bode plot analysis, AVP load-line programming, DrMOS thermal calculations |
+| "Design the PDN impedance target" | Capacitor impedance spectroscopy, anti-resonance avoidance, SPICE AC sweep |
+| "Select UPS topology" | Battery C-rate sizing, double-conversion efficiency math, flywheel energy equations |
+| "Coordinate protection" | TCC curve overlay, arc flash incident energy calc, DC breaker extinction physics |
+
+> **Interactive Simulations:** Every chapter includes zero-build, browser-native simulation widgets (Canvas + parameter sliders) and references to SPICE testbenches you can run locally with ngspice.
+
+---
+
+## Relationship to the AI Data Center Guide
+
+| Our Chapter | Guide Reference (read first) | Our Deep-Dive Focus |
+|-------------|------------------------------|---------------------|
+| **1. Power Chain Overview** | [Part 4.1](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-1-power-topology-foundations-and-voltage-selection) | Conversion-stage efficiency math, voltage selection first principles, our simulation framework |
+| **2. MV Switchgear & Protection** | [Part 4.2](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-2-utility-interconnect-on-site-substation-and-mv-distribution) | TCC coordination curves, relay settings, arc flash calculation workflow (IEEE 1584) |
+| **3. Transformer Engineering** | [Part 4.4](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-4-transformers-harmonics-and-the-ai-non-linear-load-problem) | K-factor derating math, Δ-Y / zigzag selection, impedance %, harmonic loss calculation |
+| **4. SST Circuit Design** | [Parts 4.4, 4.7](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-7-the-dc-power-revolution-48v-400v-800v-and-disaggregated-sidecar-power) | DAB topology derivation, SiC/GaN device characterization, magnetics design, ZVS boundaries, control loops |
+| **5. VRM Design & Stability** | [Part 7.12](https://aidatacenterguide.com/part-7-compute-silicon-and-system-integration/7-12-on-package-power-delivery-and-power-integrity) | Multiphase buck design, AVP implementation, DrMOS specs, Bode plot compensation, current sharing |
+| **6. GPU Power Transients** | [Part 7.12](https://aidatacenterguide.com/part-7-compute-silicon-and-system-integration/7-12-on-package-power-delivery-and-power-integrity) | dI/dt → ΔV math, decoupling impedance target, capacitor selection (MLCC/polymer/electrolytic), TVR measurement |
+| **7. UPS & Energy Storage** | [Part 4.5](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-5-ups-and-energy-storage-from-ride-through-to-transient-absorption) | Topology efficiency math, battery sizing (C-rate, DoD), flywheel energy, ESS grid integration |
+| **8. Thermal-Electrical Interface** | [Part 5](https://aidatacenterguide.com/part-5-cooling-and-thermal-management) (all 13 chapters) | Power-thermal coupling: transient thermal response, Rθ network calculation, I²R thermal limits |
+| **9. PUE & Energy Flow** | [Part 15.1–15.2](https://aidatacenterguide.com/part-15-sustainability-and-efficiency) | Interactive energy flow model, pPUE calculation per rack, efficiency optimization sensitivity |
+| **10. Telemetry & PMBus** | [Part 4.12](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-12-metering-power-quality-monitoring-and-electrical-operations) | PMBus protocol deep-dive, Hall-effect sensor signal conditioning, DAQ architecture, Redfish polling |
+| **11. DC Protection Engineering** | [Parts 4.7, 4.11](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-11-grounding-bonding-earthing-lightning-protection-spd-and-emc) | DC arc physics (no zero-crossing), breaker extinction techniques, fuse I²t coordination, connector selection |
+| **12. Safety & Arc Flash** | [Parts 4.11, 4.12](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-12-metering-power-quality-monitoring-and-electrical-operations) | IEEE 1584 calculation walkthrough, PPE category selection, LOTO procedures, grounding design |
+| **13. Measurement & Lab Techniques** | _(not covered by guide)_ | Oscilloscope methods for PI, current probe selection, VRM Bode measurement, PDN impedance injection |
+| **14. Simulation Engine Reference** | _(unique to this book)_ | T1 Canvas widgets, T2 Python notebooks, T3 ngspice/PySpice testbenches — how to use and extend |
 
 ---
 
 ## Table of Contents
 
-| Chapter | File | Scope & Key Topics |
-|---------|------|--------------------|
-| **1** | **[The AI DC Power Landscape](./01-power-landscape.md)** | Power density evolution (10kW → 100kW+ per rack), why AI workloads changed the rules, NVIDIA H100/B200 power profiles. |
-| **2** | **[Grid to DC Entrance](./02-grid-to-entrance.md)** | Utility interconnection, MV switchgear (15kV/35kV), transformer configurations (Δ-Y, zigzag), redundancy (N+1, 2N, block redundant). |
-| **3** | **[Power Distribution Architecture](./03-distribution-architecture.md)** | Busway vs cabling, PDU hierarchy, panelboards, rack-level distribution, phase balancing, harmonic currents. |
-| **4** | **[Solid-State Transformers (SST)](./04-solid-state-transformers.md)** | DAB topology, LLC resonant, isolated DC-DC stages, SiC MOSFETs, ZVS/ZCS regions, bidirectional power flow. |
-| **5** | **[Voltage Regulator Modules (VRM)](./05-vrm-and-pol.md)** | Multi-phase VRMs, AVP (Adaptive Voltage Positioning), load-line regulation, transient response specs. |
-| **6** | **[GPU Power Transients](./06-gpu-power-transients.md)** | dI/dt challenges (500–2000 A/µs), decoupling capacitor sizing, bulk vs local MLCC, NVIDIA TVR profiles. |
-| **7** | **[UPS & Energy Storage](./07-ups-and-energy-storage.md)** | Double-conversion vs eco-mode, lithium-ion vs VRLA, flywheel, ESS integration, ride-through time. |
-| **8** | **[Cooling & Thermal Management](./08-cooling-and-thermal.md)** | Air cooling TDP limits, direct-to-chip liquid (CDU, quick disconnects), immersion (single/two-phase), coolant chemistry. |
-| **9** | **[PUE & Efficiency Metrics](./09-pue-and-metrics.md)** | PUE, pPUE (per-rack), CUE, WUE, energy flow analysis, free cooling hours, economizer modes. |
-| **10** | **[Telemetry & Monitoring](./10-telemetry-and-monitoring.md)** | Hall-effect sensors, PMBus, IPMI/Redfish, DCIM platforms, real-time power profiling at rack level. |
-| **11** | **[48VDC, HVDC & Microgrids](./11-advanced-48vdc-hvdc-microgrids.md)** | Open Compute 48V rack standard, OCP ORv3, ±400V HVDC, DC microgrid integration with renewables. |
-| **12** | **[Safety & Protection Systems](./12-safety-and-protection.md)** | Arc flash, coordination study, breaker selectivity, grounding strategies, PPE categories. |
-| **13** | **[Simulation Engine Reference](./13-simulation-engine-reference.md)** | How to use the embedded simulators, PySpice/ngspice integration, Python notebook setup, adding custom widgets. |
-| **★** | **[Appendices](./appendices.md)** | Reference tables, standards (IEEE/UL/IEC), unit conversions, cable ampacity, glossary. |
+| Chapter | File | Scope |
+|---------|------|-------|
+| **1** | **[Power Chain Overview & Reference Map](./01-power-landscape.md)** | Conversion-stage efficiency math, voltage taxonomy, the simulation framework |
+| **2** | **[MV Switchgear & Protection Coordination](./02-grid-to-entrance.md)** | TCC curves, relay settings, IEEE 1584 arc flash, coordination study workflow |
+| **3** | **[Transformer Engineering](./03-distribution-architecture.md)** | K-factor, harmonic losses, impedance %, Δ-Y selection, paralleling |
+| **4** | **[SST Circuit Design](./04-solid-state-transformers.md)** | DAB topology, SiC/GaN devices, magnetics, ZVS/ZCS, control loops |
+| **5** | **[VRM Design & Stability](./05-vrm-and-pol.md)** | Multiphase buck, AVP, DrMOS, Bode compensation, current sharing |
+| **6** | **[GPU Power Transients & PDN](./06-gpu-power-transients.md)** | dI/dt math, decoupling hierarchy, impedance target, capacitor selection |
+| **7** | **[UPS & Energy Storage](./07-ups-and-energy-storage.md)** | Topology efficiency, battery sizing, flywheel, ESS integration |
+| **8** | **[Thermal-Electrical Interface](./08-cooling-and-thermal.md)** | Power-thermal coupling, Rθ networks, transient thermal, I²R limits |
+| **9** | **[PUE & Energy Flow Analysis](./09-pue-and-metrics.md)** | Interactive PUE model, pPUE per rack, sensitivity analysis |
+| **10** | **[Telemetry & PMBus](./10-telemetry-and-monitoring.md)** | PMBus protocol, sensor conditioning, DAQ, Redfish, DCIM integration |
+| **11** | **[DC Protection Engineering](./11-advanced-48vdc-hvdc-microgrids.md)** | DC arc, breaker extinction, fuse coordination, connector derating |
+| **12** | **[Safety & Arc Flash](./12-safety-and-protection.md)** | IEEE 1584 walkthrough, PPE, LOTO, grounding strategies |
+| **13** | **[Measurement & Lab Techniques](./13-simulation-engine-reference.md)** | Oscilloscope PI methods, current probes, Bode measurement, PDN injection |
+| **14** | **[Simulation Engine Reference](./14-simulation-engine-reference.md)** | T1/T2/T3 architecture, adding widgets, PySpice setup, notebook workflow |
+| **★** | **[Appendices](./appendices.md)** | Standards index, unit conversions, cable ampacity, capacitor impedance charts, glossary |
 
 ---
 
 ## Interactive Reader (Zero-Build SPA)
 
-This book ships with a custom **Zero-Build Single-Page Application** reader — the same architecture proven in the [Triantica RL Training Book](https://github.com/augusto-espinel/Triantica):
+Same architecture as the [Triantica RL Training Book](https://github.com/augusto-espinel/Triantica) — modular Markdown, Marked.js + KaTeX, sidebar search, GitHub Pages.
 
-- **Open `docs/index.html`** — no build step, no server required
-- Dynamic Markdown rendering via **Marked.js** + **KaTeX** math
-- **SPA hash routing** (`#/ch04`, `#/ch06`) for deep-linkable chapters
-- **Full-text search** across all chapters (press `/`)
-- **Reading progress** tracking via `localStorage`
-- **Live simulation widgets** embedded in chapter content via ` ```sim:widget-id ` code blocks
-- **Neon Manifold** visual theme adapted with power-engineering accent palette
+- **Open `docs/index.html`** — no build step required
+- **Live simulation widgets** embedded via ` ```sim:widget-id ` code blocks
+- **SPICE testbenches** in `spice/testbenches/` — run with `ngspice -b file.cir`
+- **Python notebooks** in `notebooks/` — run locally or via Binder/Colab
 
-### Simulation Architecture
+### Simulation Tiers
 
-The book uses a **tiered simulation strategy**:
-
-| Tier | Technology | Use Case | Delivery |
-|------|-----------|----------|----------|
-| **T1 — Canvas Widgets** | Zero-dep JS + Canvas API | Real-time interactive concepts (transients, efficiency maps, energy flow) | Embedded in SPA, runs in-browser |
-| **T2 — Python Notebooks** | Jupyter → HTML embeds | Computational analysis (load flow, thermal modeling, cable sizing) | Pre-rendered static HTML or Binder/Colab links |
-| **T3 — SPICE Simulation** | ngspice via PySpice | Circuit-level simulation (VRM transient, SST DAB switching, PFC) | Pre-run waveforms + optional server-side runner |
-
-**Currently implemented T1 widgets:**
-- `gpu-transient` — dI/dt step response with VRM + decoupling model
-- `sst-dab-efficiency` — DAB converter efficiency map with ZVS indicator
-- `pue-thermal` — Energy flow breakdown (IT / cooling / UPS / misc) with PUE calculation
+| Tier | Technology | Example |
+|------|-----------|---------|
+| **T1** | Canvas + JS (zero-dep, in-browser) | dI/dt step response slider, DAB efficiency map, PUE energy flow |
+| **T2** | Python + Jupyter | Load flow calculation, cable ampacity, thermal Rθ network solver |
+| **T3** | ngspice + PySpice | VRM transient with real SiC models, DAB switching waveforms, PDN impedance sweep |
 
 ### Running Locally
 
 ```bash
-# Option 1: Open directly
-open docs/index.html
-
-# Option 2: Python HTTP server (GitHub Pages parity)
+# SPA reader
 cd docs && python3 -m http.server 8080
-# → http://localhost:8080
 
-# Option 3: Deploy to GitHub Pages
-# Push to main branch; docs/ folder is served automatically
-```
+# SPICE testbench
+cd spice/testbenches && ngspice -b vrm_transient.cir
 
-### SPICE Environment (Tier 3)
-
-For local circuit simulation with ngspice:
-
-```bash
-# Install ngspice (macOS)
-brew install ngspice
-
-# Install PySpice (Python wrapper)
-pip3 install PySpice
-
-# Run a testbench
-cd spice/testbenches
-ngspice -b vrm_transient.cir -o output.txt
+# Python notebook
+cd notebooks/02-gpu-transients && jupyter notebook decoupling_analysis.ipynb
 ```
 
 ---
 
-*Version: 0.1.0-arch (Repository Architecture — Chapters Pending Content)*  
-*Simulation Engine: Zero-build Canvas + ngspice/PySpice integration*  
-*Deployment: GitHub Pages (zero-build SPA)*
+*Version: 0.2.0-arch (Repositioned as circuit-level companion to the AI Data Center Guide)*  
+*Deployment: GitHub Pages (zero-build SPA)*  
+*Companion reference: [aidatacenterguide.com](https://aidatacenterguide.com)*

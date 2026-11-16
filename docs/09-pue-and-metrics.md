@@ -1,18 +1,18 @@
-# Chapter 9 — PUE & Efficiency Metrics
+# Chapter 9 — PUE & Energy Flow Analysis
+
+> 📖 **Read first:**
+> - [AI Data Center Guide — Part 15.1: Efficiency Metrics (PUE, WUE, ERF, REF)](https://aidatacenterguide.com/part-15-sustainability-and-efficiency/15-1-efficiency-metrics-pue-wue-erf-ref-and-the-post-pue-metric-stack)
+> - [AI Data Center Guide — Part 15.2: Energy Efficiency (Cooling, Free Cooling, Setpoints)](https://aidatacenterguide.com/part-15-sustainability-and-efficiency/15-2-energy-efficiency-cooling-free-cooling-setpoints-and-power-chain-losses)
 
 > 🚧 **Status:** Architecture placeholder — content to be populated.
 
-## Overview
+## What This Chapter Covers (That the Guide Doesn't)
 
-PUE (Power Usage Effectiveness) is the industry standard for data center efficiency. This chapter goes beyond the number to understand what it measures and what it hides.
+The guide covers the metric stack and efficiency strategy. This chapter adds:
 
-## Key Concepts (To Be Developed)
-
-- PUE = Total Facility Power / IT Equipment Power
-- pPUE (per-rack PUE) for localized efficiency
-- CUE (Carbon Usage Effectiveness) and WUE (Water Usage Effectiveness)
-- Free cooling hours and economizer modes
-- Energy flow analysis: where every watt goes
+- **Interactive energy flow model** — parameter sliders for IT load, cooling %, UPS losses, lighting
+- **pPUE per rack** — calculation methodology for localized efficiency
+- **Sensitivity analysis** — which parameter moves PUE the most per dollar invested
 
 ## Interactive Simulation
 

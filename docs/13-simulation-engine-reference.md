@@ -1,62 +1,25 @@
-# Chapter 13 — Simulation Engine Reference
+# Chapter 13 — Measurement & Lab Techniques
+
+> 📖 **Note:** This topic is not covered by the AI Data Center Guide. It is unique to this book.
 
 > 🚧 **Status:** Architecture placeholder — content to be populated.
 
-## Overview
+## What This Chapter Covers
 
-This chapter documents the simulation architecture embedded in the book and how to extend it.
+The guide tells you what to specify. This chapter shows you how to **measure and verify** that you got what you specified:
 
-## Tier 1: Canvas Widgets (Built-in)
+- **Oscilloscope methods for power integrity** — bandwidth selection, probe positioning, ground spring techniques
+- **Current probe selection** — Hall-effect clamp vs Rogowski vs shunt, bandwidth vs accuracy tradeoffs
+- **VRM Bode plot measurement** — loop gain injection, break-point selection, frequency response analyzer setup
+- **PDN impedance measurement** — vector network analyzer (VNA), 2-port shunt-through, probe contact methods
+- **Transient capture** — trigger setup, infinite persistence, statistical analysis of droop events
 
-Zero-dependency JavaScript widgets running directly in the browser via Canvas API.
+## Key Concepts (To Be Developed)
 
-### Available Widgets
-
-| Widget ID | Description | Used In |
-|-----------|-------------|---------|
-| `gpu-transient` | dI/dt step response with VRM + decoupling model | Ch. 1, Ch. 6 |
-| `sst-dab-efficiency` | DAB converter efficiency map with ZVS indicator | Ch. 4 |
-| `pue-thermal` | Energy flow breakdown with PUE calculation | Ch. 9 |
-
-### Embedding a Widget in Markdown
-
-In any chapter `.md` file, use a fenced code block with the `sim:` prefix:
-
-````
-```sim:gpu-transient
-```
-````
-
-### Adding New Widgets
-
-Register a new widget in `docs/sims/sim-widgets.js`:
-
-```javascript
-SimWidgets.register('my-widget', function(container) {
-  var card = createCard(container, {
-    id: 'my-widget', badge: 'CUSTOM',
-    title: 'My Simulation', subtitle: 'Description'
-  });
-  // Add sliders, canvas drawing, KPIs...
-});
-```
-
-## Tier 2: Python Notebooks
-
-Jupyter notebooks for computational analysis (load flow, thermal modeling, cable sizing).
-
-- Stored in `notebooks/` directory
-- Pre-rendered to static HTML via `jupyter nbconvert --to html`
-- Embedded in chapters as iframe links or Binder/Colab badges
-
-## Tier 3: ngspice / PySpice
-
-Full circuit simulation for VRM transient, SST DAB switching, PFC stages.
-
-- SPICE models stored in `spice/models/`
-- Subcircuits in `spice/subcircuits/`
-- Testbenches in `spice/testbenches/`
-- Run via `ngspice -b testbench.cir -o output.txt`
-- PySpice wrapper for Python-driven parameter sweeps
+- Measurement chain: probe → oscilloscope → analysis → verdict
+- Bandwidth budget: signal bandwidth vs probe bandwidth vs scope bandwidth
+- Common measurement errors: ground loop pickup, probe loading, aliasing
+- Bode measurement: injection resistor selection, loop break considerations
+- VNA calibration for PDN: full 2-port SOLT, de-embedding fixtures
 
 *Content will be developed step by step with Augusto.*

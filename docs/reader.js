@@ -23,7 +23,8 @@
     { id: 'ch10',        file: '10-telemetry-and-monitoring.md',                   num: '10', title: 'Telemetry & Monitoring',         sub: false },
     { id: 'ch11',        file: '11-advanced-48vdc-hvdc-microgrids.md',             num: '11', title: '48VDC, HVDC & Microgrids',       sub: false },
     { id: 'ch12',        file: '12-safety-and-protection.md',                      num: '12', title: 'Safety & Protection Systems',    sub: false },
-    { id: 'ch13',        file: '13-simulation-engine-reference.md',                num: '13', title: 'Simulation Engine Reference',    sub: false },
+    { id: 'ch13',        file: '13-simulation-engine-reference.md',                num: '13', title: 'Measurement & Lab Techniques',   sub: false },
+    { id: 'ch14',        file: '14-simulation-engine-reference.md',                num: '14', title: 'Simulation Engine Reference',    sub: false },
     { id: 'appendices',  file: 'appendices.md',                                    num: '★',  title: 'Appendices',                     sub: false },
   ];
 

@@ -1,8 +1,8 @@
-# AI Data Center Power Systems — Engineering Reference Book
+# AI Data Center Power Systems — The System Engineer's Circuit-Level Companion
 
-**From Grid to Chip — Mastering Power Delivery, Solid-State Transformers, GPU Load Transients, and Liquid Cooling for AI-Scale Infrastructure**
+**From MV to Die — Circuit Engineering, SPICE Simulation, and Interactive Exploration of the Power Delivery Chain**
 
-Interactive engineering reference with live electrical simulations, covering the complete power chain from utility grid to GPU die.
+This is **not** another architecture-level reference. The [AI Data Center Guide](https://aidatacenterguide.com) already covers that comprehensively (166 chapters, vendor-neutral, practitioner depth). This book is the **engineer's deep-dive companion**: circuit-level physics, component selection, SPICE simulation, measurement methodology, and interactive widgets that let you *feel* the engineering tradeoffs.
 
 ## Quick Start
 
@@ -11,8 +11,11 @@ Interactive engineering reference with live electrical simulations, covering the
 cd docs && python3 -m http.server 8080
 # → http://localhost:8080
 
-# Or just open the index
-open docs/index.html
+# Run a SPICE testbench
+cd spice/testbenches && ngspice -b vrm_transient.cir
+
+# Python notebook
+cd notebooks/02-gpu-transients && jupyter notebook decoupling_analysis.ipynb
 ```
 
 ## Repository Structure
@@ -21,49 +24,48 @@ open docs/index.html
 ai-datacenter-power-book/
 ├── docs/                          # GitHub Pages root (zero-build SPA)
 │   ├── index.html                 # SPA entry point
-│   ├── reader.js                  # Markdown loader + router + search
+│   ├── reader.js                  # Markdown loader + router + search + sim boot
 │   ├── power-book.css             # Neon Manifold theme + sim widget styles
-│   ├── README.md                  # Book index page (loaded by SPA)
-│   ├── 01-power-landscape.md      # Ch.1 — AI DC power density evolution
-│   ├── 02-grid-to-entrance.md     # Ch.2 — Utility to MV switchgear
-│   ├── 03-distribution-architecture.md  # Ch.3 — Busway, PDU, rack power
-│   ├── 04-solid-state-transformers.md   # Ch.4 — SST, DAB, SiC/GaN
-│   ├── 05-vrm-and-pol.md          # Ch.5 — Multi-phase VRMs, AVP
-│   ├── 06-gpu-power-transients.md # Ch.6 — dI/dt, decoupling, TVR
-│   ├── 07-ups-and-energy-storage.md      # Ch.7 — UPS topologies, Li-ion
-│   ├── 08-cooling-and-thermal.md  # Ch.8 — Air → liquid → immersion
-│   ├── 09-pue-and-metrics.md      # Ch.9 — PUE, pPUE, CUE, WUE
-│   ├── 10-telemetry-and-monitoring.md    # Ch.10 — Sensors, DCIM, Redfish
-│   ├── 11-advanced-48vdc-hvdc-microgrids.md  # Ch.11 — OCP 48V, HVDC
-│   ├── 12-safety-and-protection.md       # Ch.12 — Arc flash, coordination
-│   ├── 13-simulation-engine-reference.md # Ch.13 — Sim architecture docs
+│   ├── sim-widgets.js             # T1 Canvas simulation widgets
+│   ├── README.md                  # Book index with guide cross-references
+│   ├── 01-power-landscape.md      # Ch.1 — Power chain overview + ref map
+│   ├── 02-grid-to-entrance.md     # Ch.2 — MV switchgear & protection coordination
+│   ├── 03-distribution-architecture.md  # Ch.3 — Transformer engineering
+│   ├── 04-solid-state-transformers.md   # Ch.4 — SST circuit design (DAB, SiC, magnetics)
+│   ├── 05-vrm-and-pol.md          # Ch.5 — VRM design & stability (Bode, AVP, DrMOS)
+│   ├── 06-gpu-power-transients.md # Ch.6 — PDN, decoupling, dI/dt math
+│   ├── 07-ups-and-energy-storage.md      # Ch.7 — UPS topology & battery sizing
+│   ├── 08-cooling-and-thermal.md  # Ch.8 — Power-thermal coupling (Rθ networks)
+│   ├── 09-pue-and-metrics.md      # Ch.9 — Interactive PUE & energy flow
+│   ├── 10-telemetry-and-monitoring.md    # Ch.10 — PMBus, sensors, DAQ
+│   ├── 11-advanced-48vdc-hvdc-microgrids.md  # Ch.11 — DC protection engineering
+│   ├── 12-safety-and-protection.md       # Ch.12 — Arc flash (IEEE 1584), PPE, LOTO
+│   ├── 13-simulation-engine-reference.md # Ch.13 — Measurement & lab techniques
+│   ├── 14-simulation-engine-reference.md # Ch.14 — Sim engine architecture (T1/T2/T3)
 │   ├── appendices.md              # Standards, conversions, glossary
-│   ├── assets/
-│   │   └── diagrams/              # SVG architecture diagrams
-│   └── sims/
-│       └── sim-widgets.js         # T1 Canvas simulation widgets
+│   └── assets/diagrams/           # SVG architecture diagrams
 ├── notebooks/                     # T2 Python Jupyter notebooks
-│   ├── 01-power-chain/
-│   ├── 02-gpu-transients/
-│   ├── 03-sst-topologies/
-│   └── 04-thermal-liquid/
 ├── spice/                         # T3 ngspice circuit simulation
 │   ├── models/                    # SPICE device models (SiC, GaN, etc.)
 │   ├── subcircuits/               # Reusable subcircuit definitions
 │   └── testbenches/               # .cir testbench files
 ├── scripts/                       # Build/convert utilities
-├── .github/workflows/
-│   └── deploy.yml                 # GitHub Pages auto-deploy
+├── .github/workflows/deploy.yml   # GitHub Pages auto-deploy
 └── README.md                      # This file
 ```
 
-## Simulation Tiers
+## Companion Reference
 
-| Tier | Technology | Runs Where | Purpose |
-|------|-----------|------------|---------|
-| **T1** | Canvas + JS | In-browser (zero-dep) | Real-time interactive concepts |
-| **T2** | Python + Jupyter | Local / Binder / Colab | Computational analysis |
-| **T3** | ngspice + PySpice | Local CLI / server | Full circuit simulation |
+Each chapter opens with a cross-reference to the relevant section(s) of the [AI Data Center Guide](https://aidatacenterguide.com), then goes deeper into the circuit-level engineering that the guide's architecture-level treatment doesn't cover.
+
+| Our Focus | Guide's Coverage |
+|-----------|-----------------|
+| TCC coordination curves, relay settings | "Choose MV switchgear topology" |
+| DAB topology math, SiC datasheet reading, magnetics design | "SST is an architectural option" |
+| Multiphase Bode plot, AVP programming, DrMOS thermal | "Choose board-edge vs VPD" |
+| Capacitor impedance spectroscopy, anti-resonance | "Design PDN impedance target" |
+| IEEE 1584 step-by-step calculation | "Coordinate protection" |
+| Oscilloscope methods, VNA PDN measurement | _(not covered)_ |
 
 ## Deployment
 
@@ -71,4 +73,4 @@ Push to `main` → GitHub Actions deploys `docs/` to GitHub Pages automatically.
 
 ## Origin
 
-Architecture adapted from the [Triantica RL Training Book](https://github.com/augusto-espinel/Triantica) — a zero-build SPA reader with modular Markdown chapters, SVG diagrams, KaTeX math, and interactive widgets.
+Architecture adapted from the [Triantica RL Training Book](https://github.com/augusto-espinel/Triantica).
