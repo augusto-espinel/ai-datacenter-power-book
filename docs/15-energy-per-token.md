@@ -108,7 +108,7 @@ The Triantica project provides a rare opportunity: we know **exactly** how many 
 
 ### Energy Calculation
 
-**Local Mac Studio energy (the dominant cost):**
+**Local Mac Studio energy (derived from training session logs):**
 
 Apple's official specifications (support.apple.com/en-us/102027) rate the Mac Studio M2 Ultra (24-core CPU, 76-core GPU, 192GB) at:
 
@@ -117,11 +117,38 @@ Apple's official specifications (support.apple.com/en-us/102027) rate the Mac St
 | Idle (Finder only) | **10 W** |
 | Max (compute-intensive benchmark) | **295 W** |
 
-During the Triantica project, the Mac Studio served as the agentic runtime (OpenClaw gateway, file watchers, occasional local Ollama compaction). CPU utilization was typically low (<20%) — the machine spent most of its time waiting for remote API responses from OpenRouter. A realistic average power draw is **~30 W**, accounting for background processes, disk I/O, and occasional compute bursts during compaction runs.
+Rather than assuming a flat average, we can derive the actual GPU-active time from the Triantica training session logs (`dashboard/data/*.json`), which record `startedAt` and `endedAt` timestamps for every experiment:
 
-$$E_{local} \approx 30\text{ W} \times 15 \times 24\text{ h} = 10.8\text{ kWh} = 38.9\text{ MJ}$$
+| Experiment | Duration | Source |
+|-----------|----------|--------|
+| TF-B1_optimized | 47 min | JSON timestamp |
+| TF-B1_pure | 38 min | JSON timestamp |
+| TF-B2_mixed | 39 min | JSON timestamp |
+| TF-B4_replay | 42 min | JSON timestamp |
+| TF-B5_conv | 42 min | Experiment reference table |
+| TF-B6_optimized | 42 min | Experiment reference table |
+| TF-B8-V2 | 432 min (7.2h) | JSON timestamp |
+| TF-B8 | 309 min (5.2h) | JSON timestamp |
+| TF-B9 | 293 min (4.9h) | JSON timestamp |
+| TF-B10 | 161 min (2.7h) | JSON timestamp |
+| TF-B12 | 270 min (4.5h) | JSON timestamp |
+| TF-B13 | 341 min (5.7h) | JSON timestamp |
+| TF-B14 | 397 min (6.6h) | JSON timestamp |
+| TF-B15 | 585 min (9.8h) | JSON timestamp |
+| exp20, exp22 + earlier brain.js | ~66 min | Experiment reference table |
+| **Total GPU-active training** | **~51.8 hours** | |
 
-> **Note:** If a local Ollama model was running continuously at high utilization, average power could rise to ~80–150W. The 30W figure assumes the typical agentic pattern of mostly-waiting with intermittent activity.
+Over the 15-day project (360 hours total), this gives three distinct power regimes:
+
+| Regime | Hours | Power (W) | Rationale |
+|--------|-------|-----------|----------|
+| **Training (GPU via Metal)** | 51.8h | ~220W | Sustained TF.js matrix ops on M2 Ultra GPU (below 295W max since not 100% CPU+GPU) |
+| **Active coding (agentic)** | ~92.5h | ~25W | OpenClaw runtime, API calls, file I/O, git (30% of non-training time) |
+| **Truly idle** | ~215.8h | ~15W | Machine on but waiting (70% of non-training time) |
+
+$$E_{local} = (51.8 \times 220) + (92.5 \times 25) + (215.8 \times 15) = 16{,}933 \text{ Wh} \approx 16.9 \text{ kWh} = 61.0 \text{ MJ}$$
+
+This is derived from actual session timestamps rather than a flat power assumption. The training sessions account for **48.8%** of local energy despite being only **14.4%** of calendar time — the GPU compute density during training dominates the energy profile.
 
 **Remote GPU inference energy (the actual token compute):**
 
@@ -136,23 +163,25 @@ $$E_{remote+DC} \approx 17.8 \times 1.3 \approx 23.1\text{ MJ} = 0.0064\text{ kW
 
 | Energy Component | Value | % of Total |
 |-----------------|-------|------------|
-| Mac Studio (~30W avg, 15 days × 24h) | 38.9 MJ (10.8 kWh) | **62.8%** |
-| Remote GPU inference (actual token compute) | 17.8 MJ (0.005 kWh) | **28.7%** |
-| DC overhead on remote inference (PUE 1.3) | 5.3 MJ (0.0015 kWh) | **8.5%** |
+| Mac Studio — Training (51.8h @ 220W) | 41.0 MJ (11.4 kWh) | **48.8%** |
+| Mac Studio — Active coding (92.5h @ 25W) | 8.3 MJ (2.3 kWh) | **9.9%** |
+| Mac Studio — Idle (215.8h @ 15W) | 11.7 MJ (3.2 kWh) | **13.9%** |
+| Remote GPU inference (actual token compute) | 17.8 MJ (0.005 kWh) | **21.2%** |
+| DC overhead on remote inference (PUE 1.3) | 5.3 MJ (0.0015 kWh) | **6.3%** |
 | Training amortization (negligible for API calls) | ~0.001 MJ | **<0.1%** |
-| **Total** | **~62 MJ (0.017 kWh)** | **100%** |
+| **Total** | **~84 MJ (23.4 kWh)** | **100%** |
 
-> **The paradox:** The actual GPU computation to generate 1.18 billion tokens consumed less energy than running a single Mac Studio for two weeks. The *agent runtime* — the always-on local machine orchestrating the work — was the dominant energy consumer, not the LLM inference.
+> **The insight:** The actual GPU computation to generate 1.18 billion tokens consumed only **21%** of the project's total energy. The local Mac Studio's training sessions (51.8h of GPU-active TF.js compute at ~220W) consumed **49%** — nearly half of all energy. The *agent runtime* (coding + idle) added another **24%**. This reveals a key dynamic for AI projects that include local model training: the training phase, not inference, is often the dominant energy cost.
 
 ### Per-Token Energy
 
 | Scope | Energy/Token |
 |-------|-------------|
 | Remote inference only (81.3M uncached + 3.23M completion) | **0.21 J/token** |
-| Including local Mac Studio overhead (~30W avg) | **0.053 J/token** (total ÷ all 1.18B billed tokens) |
-| Including local Mac Studio (÷ completion tokens only) | **19.3 J/completion-token** |
+| Full project (all 1.18B billed tokens) | **0.071 J/token** (84 MJ ÷ 1.18B) |
+| Full project (÷ completion tokens only) | **26 J/completion-token** |
 
-> **Note:** The Mac Studio's idle-to-light workload power draw (10–30W) is remarkably low for a 24-core workstation. Even so, the always-on local runtime still consumes ~63% of total project energy — the *agent orchestration overhead* remains the dominant cost, just not as extreme as the initial 200W assumption suggested. The per-completion-token cost drops from the initial 87 J estimate to ~19 J, still roughly 90× the raw GPU inference energy, because most of the 1.18B tokens were prompt re-sends (agentic context repetition), not new output.
+> The per-completion-token cost of ~26 J is roughly **130× the raw GPU inference energy** (~0.2 J/token). This overhead comes from two sources: (1) the Mac Studio's GPU-active training sessions (51.8h at ~220W), and (2) the massive prompt-token inflation of agentic workflows — most of the 1.18B billed tokens were context re-sends, not new output. The training session energy is actually the *largest single component* of the project's energy footprint, which is an important insight for AI projects that include local model training as part of the development cycle.
 
 ### Connecting to the Power Chain
 
