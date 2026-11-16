@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Data Center Power Systems — Engineering Reference & Interactive Simulator</title>
+<meta name="description" content="Systems Engineering Knowledge Base: Grid-to-Chip Power Delivery, Solid-State Transformers (SST), GPU Load Transients, and Liquid Cooling">
+<meta property="og:title" content="AI Data Center Power Systems Book">
+<meta property="og:description" content="Complete reference architecture and live interactive simulators for AI data center electrical & thermal systems engineering.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Share+Tech+Mono&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="./power-book.css">
+</head>
+<body>
+
+<!-- ═══ Progress Bar ═══ -->
+<div id="progress-bar" class="progress-bar"><div class="progress-fill"></div></div>
+
+<!-- ═══ Mobile Header ═══ -->
+<header class="mobile-header">
+  <button id="sidebar-toggle" class="btn-icon" aria-label="Toggle navigation">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFB800" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <span class="mobile-title">AI POWER SYSTEMS</span>
+  <button id="search-toggle-mobile" class="btn-icon" aria-label="Search">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00F0FF" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </button>
+</header>
+
+<!-- ═══ Sidebar ═══ -->
+<aside id="sidebar" class="sidebar" role="navigation" aria-label="Chapter navigation">
+  <div class="sidebar-header">
+    <div class="logo-mark">
+      <svg width="34" height="34" viewBox="0 0 40 40">
+        <rect x="3" y="3" width="34" height="34" rx="6" fill="#071120" stroke="#00F0FF" stroke-width="1.5"/>
+        <path d="M22 6 L10 22 H19 L17 34 L30 18 H21 Z" fill="#FFB800" fill-opacity="0.85" stroke="#FFE066" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <div class="logo-title">GRID → CHIP</div>
+      <div class="logo-subtitle">AI DC Power Engineering</div>
+    </div>
+    <button id="sidebar-close" class="btn-icon sidebar-close-btn" aria-label="Close navigation">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5CE1E6" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="sidebar-search">
+    <div class="search-input-wrap">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CE1E6" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search-input" placeholder="Search topologies, SST, dI/dt…" autocomplete="off" spellcheck="false">
+      <kbd class="search-kbd">/</kbd>
+    </div>
+    <div id="search-results" class="search-results" role="listbox"></div>
+  </div>
+  <nav id="nav-tree" class="nav-tree" aria-label="Table of contents"></nav>
+  <div class="sidebar-footer">
+    <a href="#/appendices" class="sidebar-link" title="Simulation Engine & SPICE Stack">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFB800" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Live Sim Engine</span>
+    </a>
+    <span class="sidebar-version">v0.1.0-arch</span>
+  </div>
+</aside>
+<div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+<!-- ═══ Main Content ═══ -->
+<main id="content" class="content" role="main">
+  <div id="splash" class="splash">
+    <div class="splash-poly">
+      <svg width="84" height="84" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="34" fill="none" stroke="#00F0FF" stroke-width="2" stroke-dasharray="12 6">
+          <animateTransform attributeName="transform" type="rotate" values="0 40 40;360 40 40" dur="14s" repeatCount="indefinite"/>
+        </circle>
+        <path d="M44 14 L22 44 H38 L34 66 L58 36 H42 Z" fill="#FFB800" fill-opacity="0.75" stroke="#FFE066" stroke-width="1.8"/>
+      </svg>
+    </div>
+    <h1 class="splash-title">GRID → CHIP</h1>
+    <p class="splash-subtitle">AI Data Center Power Systems & Interactive Simulation Book</p>
+    <div class="splash-loader"><div class="loader-bar"></div></div>
+  </div>
+  <article id="article" class="article" style="display:none"></article>
+  <nav id="chapter-nav" class="chapter-nav" style="display:none" aria-label="Chapter navigation">
+    <a id="prev-chapter" class="chapter-nav-btn prev" href="">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      <span id="prev-chapter-title">Previous</span>
+    </a>
+    <a id="toc-link" class="chapter-nav-btn toc" href="#/">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Index</span>
+    </a>
+    <a id="next-chapter" class="chapter-nav-btn next" href="">
+      <span id="next-chapter-title">Next</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  </nav>
+</main>
+
+<script src="./sims/sim-widgets.js"></script>
+<script src="./reader.js"></script>
+</body>
+</html>
