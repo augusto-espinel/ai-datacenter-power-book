@@ -63,6 +63,7 @@ This book is the **engineer's deep-dive companion**: it goes below the architect
 | **12** | **[Safety & Arc Flash](./12-safety-and-protection.md)** | IEEE 1584 walkthrough, PPE, LOTO, grounding strategies |
 | **13** | **[Measurement & Lab Techniques](./13-simulation-engine-reference.md)** | Oscilloscope PI methods, current probes, Bode measurement, PDN injection |
 | **14** | **[Simulation Engine Reference](./14-simulation-engine-reference.md)** | T1/T2/T3 architecture, adding widgets, PySpice setup, notebook workflow |
+| **15** | **[Energy Per Token: Full Cost of AI Inference](./15-energy-per-token.md)** | GPU die → node → facility → training amortization, Triantica case study, interactive energy stack calculator |
 | **★** | **[Appendices](./appendices.md)** | Standards index, unit conversions, cable ampacity, capacitor impedance charts, glossary |
 
 ---

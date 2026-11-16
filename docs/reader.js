@@ -25,6 +25,7 @@
     { id: 'ch12',        file: '12-safety-and-protection.md',                      num: '12', title: 'Safety & Protection Systems',    sub: false },
     { id: 'ch13',        file: '13-simulation-engine-reference.md',                num: '13', title: 'Measurement & Lab Techniques',   sub: false },
     { id: 'ch14',        file: '14-simulation-engine-reference.md',                num: '14', title: 'Simulation Engine Reference',    sub: false },
+    { id: 'ch15',        file: '15-energy-per-token.md',                           num: '15', title: 'Energy Per Token — Full Cost',   sub: false },
     { id: 'appendices',  file: 'appendices.md',                                    num: '★',  title: 'Appendices',                     sub: false },
   ];
 

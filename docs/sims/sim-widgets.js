@@ -312,3 +312,89 @@
   // ── Export ──
   window.SimWidgets = { register: register, mount: mount };
 })();
+
+  // ══════════════════════════════════════════════════════════════
+  //  SIM 4: Energy Per Token — Full Stack Calculator
+  // ══════════════════════════════════════════════════════════════
+  register('energy-per-token', function (container) {
+    var p = { gpuPower: 700, throughput: 4000, batchSize: 128, pue: 1.2, nodeFactor: 1.35, trainTokens: 13e12, trainGwh: 50, infLifetime: 1e15 };
+
+    var card = createCard(container, {
+      id: 'energy-token', badge: 'ENERGY',
+      title: 'Energy Per Token — Full Grid-to-Chip Stack',
+      subtitle: 'GPU die → node → facility → training amortization'
+    });
+
+    createSlider(card.controls, { id: 's-gpu', label: 'GPU Power (W)', min: 200, max: 1200, step: 50, value: p.gpuPower, unit: ' W', onChange: function (v) { p.gpuPower = v; } });
+    createSlider(card.controls, { id: 's-tput', label: 'Throughput (tok/s)', min: 100, max: 10000, step: 100, value: p.throughput, unit: ' t/s', onChange: function (v) { p.throughput = v; } });
+    createSlider(card.controls, { id: 's-batch', label: 'Batch Size', min: 1, max: 1024, step: 1, value: p.batchSize, unit: '', onChange: function (v) { p.batchSize = v; } });
+    createSlider(card.controls, { id: 's-pue', label: 'PUE', min: 1.05, max: 2.0, step: 0.01, value: p.pue, unit: '', format: function (v) { return v.toFixed(2); }, onChange: function (v) { p.pue = v; } });
+    createSlider(card.controls, { id: 's-node', label: 'Node Overhead (×)', min: 1.0, max: 2.0, step: 0.05, value: p.nodeFactor, unit: '×', format: function (v) { return v.toFixed(2); }, onChange: function (v) { p.nodeFactor = v; } });
+    createSlider(card.controls, { id: 's-train', label: 'Training Energy (GWh)', min: 0.1, max: 200, step: 0.1, value: p.trainGwh, unit: ' GWh', format: function (v) { return v.toFixed(1); }, onChange: function (v) { p.trainGwh = v; } });
+    createSlider(card.controls, { id: 's-life', label: 'Inference Lifetime (tokens)', min: 1e12, max: 1e16, step: 1e12, value: p.infLifetime, unit: '', format: function (v) { return v.toExponential(1); }, onChange: function (v) { p.infLifetime = v; } });
+
+    var kDie   = createKPI(card.kpis, { id: 'k-die', label: 'GPU Die', value: '— J', cls: 'good' });
+    var kNode  = createKPI(card.kpis, { id: 'k-node', label: 'Node Level', value: '— J', cls: '' });
+    var kDC    = createKPI(card.kpis, { id: 'k-dc', label: 'Facility (PUE)', value: '— J', cls: 'warn' });
+    var kTrain = createKPI(card.kpis, { id: 'k-train', label: 'Training Amort.', value: '— J', cls: '' });
+    var kTotal = createKPI(card.kpis, { id: 'k-total', label: 'TOTAL', value: '— J', cls: 'danger' });
+    var kWh    = createKPI(card.kpis, { id: 'k-wh', label: 'Wh/Million', value: '—', cls: '' });
+
+    function frame() {
+      var w = card.canvas.clientWidth, h = card.canvas.clientHeight;
+
+      // Compute energy stack
+      var eDie   = p.gpuPower / p.throughput; // J/token at GPU die
+      var eNode  = eDie * p.nodeFactor;        // J/token at node level
+      var eDC    = eNode * p.pue;               // J/token at facility level
+      var eTrain = (p.trainGwh * 3.6e12) / p.infLifetime; // J/token amortized training
+      var eTotal = eDC + eTrain;
+
+      // Draw stacked bar chart
+      drawGrid(card.ctx, w, h, { xDivs: 10, yDivs: 5, zeroLine: false });
+
+      var barW = w * 0.5, barX = w * 0.15, barH = h * 0.7, barY = h * 0.15;
+      var layers = [
+        { label: 'GPU Die',      energy: eDie,   color: '#00F0FF' },
+        { label: 'Node',         energy: eDie * (p.nodeFactor - 1), color: '#0066FF' },
+        { label: 'Cooling/PUE',  energy: eNode * (p.pue - 1),      color: '#FFB800' },
+        { label: 'Training',     energy: eTrain,  color: '#E6193C' }
+      ];
+
+      var maxE = eTotal * 1.1;
+      var yOff = barY + barH;
+      for (var i = 0; i < layers.length; i++) {
+        var segH = (layers[i].energy / maxE) * barH;
+        yOff -= segH;
+        card.ctx.fillStyle = layers[i].color;
+        card.ctx.globalAlpha = 0.85;
+        card.ctx.fillRect(barX, yOff, barW, segH);
+        card.ctx.globalAlpha = 1;
+        card.ctx.strokeStyle = 'rgba(3,6,12,0.8)';
+        card.ctx.lineWidth = 1;
+        card.ctx.strokeRect(barX, yOff, barW, segH);
+        if (segH > 18) {
+          drawLabel(card.ctx, layers[i].label + ' ' + layers[i].energy.toFixed(3) + ' J', barX + 8, yOff + segH / 2 + 4, '#E6F9FF');
+        }
+      }
+
+      card.ctx.strokeStyle = 'rgba(0,240,255,0.3)';
+      card.ctx.lineWidth = 1.5;
+      card.ctx.strokeRect(barX, barY, barW, barH);
+
+      // Scale annotation
+      drawLabel(card.ctx, 'Energy per token (J)', barX, barY - 8, '#5CE1E6');
+      drawLabel(card.ctx, eTotal.toFixed(3) + ' J total', barX + barW / 2 - 40, barY + barH + 16, '#FFB800');
+
+      // KPIs
+      kDie.textContent   = eDie.toFixed(3) + ' J';
+      kNode.textContent  = eNode.toFixed(3) + ' J';
+      kDC.textContent    = eDC.toFixed(3) + ' J';
+      kTrain.textContent = eTrain.toFixed(4) + ' J';
+      kTotal.textContent = eTotal.toFixed(3) + ' J';
+      kWh.textContent    = (eTotal * 278).toFixed(1) + ' Wh/M';
+
+      requestAnimationFrame(frame);
+    }
+    frame();
+  });
