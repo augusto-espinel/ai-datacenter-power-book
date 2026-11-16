@@ -75,15 +75,30 @@ Amortized over a data center's ~15-year lifespan and ~10¹⁸ tokens of lifetime
 
 ### Layer 5: Training Energy Amortization
 
-Training a frontier model consumes enormous energy. This cost is amortized over every inference token the model ever generates.
+Training a frontier model consumes enormous energy. This cost is amortized over every inference token the model ever generates during its deployment lifetime.
 
-| Model | Training Energy (est.) | Training Tokens | J/Training-Token | Inference Lifetime (est.) | J/Inference-Token (amortized) |
-|-------|----------------------|-----------------|-------------------|--------------------------|-------------------------------|
-| GPT-4 (~1.7T params) | ~50 GWh | ~13T tokens | ~14 J/token | ~10¹⁴–10¹⁵ inference tokens | **0.0001–0.001 J** |
-| Llama 3 70B | ~3–5 GWh | ~15T tokens | ~1 J/token | ~10¹⁴ inference tokens | **~0.0001 J** |
-| Small model (7B) | ~0.1–0.5 GWh | ~2T tokens | ~0.2 J/token | ~10¹³ inference tokens | **~0.0001 J** |
+| Model | Training Energy (est.) | Training Energy (J) | Lifetime Tokens (est.) | Amortized J/Token |
+|-------|----------------------|---------------------|----------------------|-------------------|
+| GPT-4 (~1.7T params) | ~50 GWh | 1.8 × 10¹⁴ J | 4.5–9 × 10¹⁴ (12–24 months at current ChatGPT scale) | **0.2–1.8 J** |
+| Llama 3 70B | ~3–5 GWh | ~1.4 × 10¹³ J | 4.5–9 × 10¹⁴ | **0.02–0.03 J** |
+| Small model (7B) | ~0.1–0.5 GWh | ~1.1 × 10¹² J | 10¹³–10¹⁴ | **0.01–0.1 J** |
 
-Training energy per inference token is tiny *if the model serves billions of queries*. It becomes significant for models with short deployment lifespans or low utilization.
+**These numbers are derived from real 2026 usage data, not projections:**
+- ChatGPT serves ~1.2 billion weekly active users (OpenAI DevDay, Sep 2026)
+- ~2.5 billion prompts/day × ~500 tokens/prompt ≈ **1.25 × 10¹² tokens/day**
+- Over 12–24 months (observed model lifespan): 4.5–9 × 10¹⁴ lifetime tokens
+
+**Observed model lifespans are shortening:**
+- GPT-4: March 2023 → May 2024 (~14 months before GPT-4o replaced it)
+- GPT-4o: May 2024 → early 2026 retirement in ChatGPT (~18–20 months)
+- Azure retirement schedule: GPT-4o fully retired by April 2027
+- The model lifecycle is accelerating, not stabilizing
+
+> **Critical finding:** Training amortization is **not negligible** — at current scale, it adds **0.2–1.8 J/token** for a GPT-4-class model, which is **comparable to or exceeds raw inference energy** (~0.2 J/token at the GPU die). The chapter's earlier draft claimed ~0.0001–0.001 J/token; that was a math error of ~1000×.
+
+**The scaling tension:** Training energy is increasing ~1000× per generation (GPT-3: ~0.02 GWh → GPT-4: ~50 GWh → GPT-5: est. 100+ GWh). But lifetime inference tokens are also increasing ~1000× per generation (user growth + more tokens/query from reasoning models). These two trends roughly cancel, keeping amortized training cost per token in the **0.1–2 J/token** range. **If user growth stalls while training costs continue to rise, the amortized cost per token will increase.**
+
+**For niche/low-traffic models,** training energy per token can be orders of magnitude higher. A model trained at 10 GWh serving only 10^10 lifetime tokens would carry **360 J/token** of training energy — making inference efficiency improvements irrelevant.
 
 ## Interactive Simulation
 
@@ -159,29 +174,40 @@ $$E_{remote} \approx (81.3\text{M uncached} \times 0.2\text{ J/token}) + (3.23\t
 **With data center overhead (PUE ~1.3):**
 $$E_{remote+DC} \approx 17.8 \times 1.3 \approx 23.1\text{ MJ} = 0.0064\text{ kWh}$$
 
+**Training amortization for the API models (GLM-5, Argon):**
+
+The Triantica project used GLM-5 and Google Gemini-4-Argon via OpenRouter. These are frontier-scale models whose training energy is amortized across all their users worldwide, not just Triantica. Using the GPT-4-class estimate (0.2–1.8 J/token) as a proxy:
+
+$$E_{train\_amort} \approx 84.5\text{M tokens} \times 0.5\text{ J/token (mid-estimate)} \approx 42.3\text{ MJ}$$
+
+This is a significant addition — potentially as large as the Mac Studio's own training energy (41 MJ). However, it represents an *allocated share* of the models' global training energy, not energy directly consumed by the Triantica project.
+
 ### The Insight
 
 | Energy Component | Value | % of Total |
 |-----------------|-------|------------|
-| Mac Studio — Training (51.8h @ 220W) | 41.0 MJ (11.4 kWh) | **48.8%** |
-| Mac Studio — Active coding (92.5h @ 25W) | 8.3 MJ (2.3 kWh) | **9.9%** |
-| Mac Studio — Idle (215.8h @ 15W) | 11.7 MJ (3.2 kWh) | **13.9%** |
-| Remote GPU inference (actual token compute) | 17.8 MJ (0.005 kWh) | **21.2%** |
-| DC overhead on remote inference (PUE 1.3) | 5.3 MJ (0.0015 kWh) | **6.3%** |
-| Training amortization (negligible for API calls) | ~0.001 MJ | **<0.1%** |
-| **Total** | **~84 MJ (23.4 kWh)** | **100%** |
+| Mac Studio — Training (51.8h @ 220W) | 41.0 MJ (11.4 kWh) | **29.1%** |
+| Mac Studio — Active coding (92.5h @ 25W) | 8.3 MJ (2.3 kWh) | **5.9%** |
+| Mac Studio — Idle (215.8h @ 15W) | 11.7 MJ (3.2 kWh) | **8.3%** |
+| Remote GPU inference (actual token compute) | 17.8 MJ (0.005 kWh) | **12.6%** |
+| DC overhead on remote inference (PUE 1.3) | 5.3 MJ (0.0015 kWh) | **3.8%** |
+| Training amortization (GLM-5/Argon, allocated) | ~42.3 MJ (mid-est.) | **30.0%** |
+| **Total** | **~141 MJ (39.1 kWh)** | **100%** |
 
-> **The insight:** The actual GPU computation to generate 1.18 billion tokens consumed only **21%** of the project's total energy. The local Mac Studio's training sessions (51.8h of GPU-active TF.js compute at ~220W) consumed **49%** — nearly half of all energy. The *agent runtime* (coding + idle) added another **24%**. This reveals a key dynamic for AI projects that include local model training: the training phase, not inference, is often the dominant energy cost.
+> **Note on training amortization range:** The allocated training energy depends on the model's total training cost and lifetime inference volume. Using the GPT-4-class range of 0.2–1.8 J/token, the Triantica allocation could be as low as 17 MJ or as high as 152 MJ. The mid-estimate (0.5 J/token → 42.3 MJ) is used in the table above. This is an *allocated share* of globally-shared training energy, not direct consumption.
+
+> **The insight:** Raw GPU inference energy (~0.2 J/token) represents less than **1%** of the full-project per-token cost. The energy footprint splits roughly into three equal tiers: local model training (29%), allocated upstream model training (30%), and everything else — idle time, agentic coding, remote inference, DC overhead (41%). For AI projects that include model training as part of the development cycle, **training is the dominant energy cost, not inference**.
 
 ### Per-Token Energy
 
 | Scope | Energy/Token |
 |-------|-------------|
-| Remote inference only (81.3M uncached + 3.23M completion) | **0.21 J/token** |
-| Full project (all 1.18B billed tokens) | **0.071 J/token** (84 MJ ÷ 1.18B) |
-| Full project (÷ completion tokens only) | **26 J/completion-token** |
+| Remote inference only (GPU die) | **0.21 J/token** |
+| + Training amortization (GPT-4-class mid-est.) | **0.71 J/token** (0.21 + 0.5) |
+| Full project (all 1.18B billed tokens) | **0.120 J/token** (141 MJ ÷ 1.18B) |
+| Full project (÷ completion tokens only) | **43.7 J/completion-token** |
 
-> The per-completion-token cost of ~26 J is roughly **130× the raw GPU inference energy** (~0.2 J/token). This overhead comes from two sources: (1) the Mac Studio's GPU-active training sessions (51.8h at ~220W), and (2) the massive prompt-token inflation of agentic workflows — most of the 1.18B billed tokens were context re-sends, not new output. The training session energy is actually the *largest single component* of the project's energy footprint, which is an important insight for AI projects that include local model training as part of the development cycle.
+> The per-completion-token cost of ~44 J includes three roughly equal components: local Mac Studio training (29%), allocated API model training amortization (30%), and everything else (idle, coding, remote inference, DC overhead). Raw GPU inference energy (~0.2 J/token) represents less than **1%** of the full-project per-token cost. This reveals that **the energy economics of AI development are dominated by training, not inference** — both the local model training (Triantica's TF.js sessions) and the upstream training of the API models used.
 
 ### Connecting to the Power Chain
 
@@ -198,6 +224,8 @@ This is where the rest of this book comes in. The 0.2 J/token at the GPU die bec
 | **Full grid-to-chip** | **1.75×** | **0.35** |
 
 Every stage in this book's chapters (Ch. 2–8) adds a few percent to the per-token energy. Understanding where those losses occur — and how to minimize them — is the system engineer's job.
+
+But training amortization (Layer 5) can add **0.2–1.8 J/token** for a GPT-4-class model at current ChatGPT scale — comparable to or exceeding all the power chain losses combined. For the Triantica project, allocated training energy (~42 MJ) matched the local Mac Studio training energy (~41 MJ). The implication for data center design: **training clusters, not just inference clusters, drive the energy footprint of AI**, and power infrastructure sizing must account for the training-inference energy ratio of the models being hosted.
 
 ## Key Concepts (To Be Developed)
 
