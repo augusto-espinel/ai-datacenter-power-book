@@ -482,96 +482,235 @@ For data center operators planning 2027–2028 deployments:
 
 7. **Parasitic capacitance, not inductance**, is the primary layout concern in MV converters. This inverts standard LV design rules.
 
-8. **the academic research pivoted.** His startup, a the venture (founded 2025, €5M seed), abandoned the single-cell 25 kW / 3.8 kV / 400 VDC / 10 kV SiC-only architecture for a **3.3 MW / 13.8 kV / 800 VDC / SiC+GaN** design — validating that the circuit physics transfers but the system architecture must follow the market.
+8. **The architecture follows the market.** The 2019 academic prototype (25 kW / 3.8 kV / 400 VDC / 10 kV SiC-only) demonstrated that the circuit physics was sound. The 2026 commercial reality (MW-scale / 13.8 kV / 800 VDC / SiC+GaN) demonstrates that the system architecture must follow the market — the circuit-level innovations transfer, but the topology and device selection adapt to the voltage, power, and standard requirements of the AI factory era.
 
 ---
 
 ## 4.12 Simulation Lab — Hands-On SST Trade-offs
 
-The following interactive simulations let you explore the key technology enablers and trade-offs from first principles.
+The chapter covers three fundamental technology enablers that make SSTs viable for AI data centers:
 
-### Sim 1: Device Voltage Class Scaling Explorer
+1. **Device voltage class selection** — why 3.3 kV SiC wins at MW scale but 10 kV wins at 25 kW (§4.4.1)
+2. **Soft-switching via iTCM** — how triangular current mode eliminates 97% of switching losses (§4.6)
+3. **Dielectric loss management** — why medium-frequency insulation can self-destruct and how silicone potting solves it (§4.4.2)
 
-Why does 3.3 kV SiC win at MW-scale but 10 kV wins at 25 kW? Adjust the MV grid voltage and power level to see how cell count, parallel dies, and efficiency change across all five SiC device classes.
+The simulation lab lets you explore each of these from first principles. The simulations are organized in three tiers by depth and tooling requirements.
 
-```sim:sst-device-scaling
+### How to Run the Simulations
+
+**Tier 1 (Canvas widgets) — No installation required.** These run directly in the book's web reader. Open the book by navigating to `docs/index.html` in a browser (or serve locally with `python3 -m http.server 8080` from the `docs/` directory). The widgets are embedded inline in the chapter — use the sliders to adjust parameters and observe the results in real time.
+
+**Tier 2 (Jupyter notebook) — Requires Python 3.10+.**
+
+```bash
+cd notebooks/sst
+pip3 install numpy matplotlib jupyter
+jupyter notebook device-selection-optimizer.ipynb
 ```
 
-**What to explore:**
-- Set MV=3.8 kV, P=0.025 MW → notice 10 kV SiC has the highest efficiency (single-cell advantage)
-- Set MV=13.8 kV, P=1.0 MW → notice 3.3 kV SiC wins (fewer cells, lower conduction loss)
-- Set MV=34.5 kV, P=5.0 MW → notice 6.5-10 kV classes become competitive again
+Run all cells to produce efficiency bar charts, 2D heatmaps, and the optimal device selector map. Saved figures appear in `docs/assets/`.
 
-### Sim 2: iTCM ZVS Boundary Map
-
-The iTCM soft-switching technique eliminates 97% of switching losses — but only if the turn-off current exceeds the $I_{ZVS}$ threshold across the entire AC grid cycle. Adjust the DC-link voltage, load, and LC branch parameters to see where ZVS is achieved and where it's lost.
-
-```sim:sst-zvs-boundary
-```
-
-**What to explore:**
-- Increase load → ZVS coverage improves (higher grid current helps)
-- Decrease $L_b$ → triangular current increases, extending ZVS coverage
-- Increase DC-link voltage → $I_{ZVS}$ rises (higher $Q_{OSS}$), making ZVS harder
-
-### Sim 3: Dielectric Loss & Thermal Runaway
-
-The most underappreciated challenge in SST design: insulation materials can self-destruct at medium frequency + medium voltage. Explore why standard epoxy fails and silicone potting works.
-
-```sim:sst-dielectric-loss
-```
-
-**What to explore:**
-- Set tan(delta)=3%, therm.cond=0.3 → thermal runaway (epoxy scenario)
-- Set tan(delta)=0.8%, therm.cond=1.0 → stable (silicone VPP scenario)
-- Increase E-field above 8 kV/mm → even silicone approaches the limit
-
-### Sim 4: DAB Efficiency Map (Original)
-
-The original DAB converter efficiency explorer from the chapter introduction.
-
-```sim:sst-dab-efficiency
-```
-
-### SPICE Testbenches (ngspice/PySpice)
-
-For circuit-level deep dives, two ngspice testbenches are provided:
-
-| Testbench | Circuit | What It Shows |
-|-----------|---------|---------------|
-| [`spice/testbenches/sst_itcm_acdc.cir`](../spice/testbenches/sst_itcm_acdc.cir) | iTCM AC/DC rectifier | ZVS waveforms, triangular current in $L_b$, grid current THD, switching loss extraction |
-| [`spice/testbenches/sst_src_dcdc.cir`](../spice/testbenches/sst_src_dcdc.cir) | Series Resonant Converter DC/DC | Resonant tank current, ZVS on both MV and LV sides, output voltage regulation |
-
-**Running the testbenches:**
+**Tier 3 (ngspice) — Requires ngspice installed.**
 
 ```bash
 # Install ngspice (macOS)
 brew install ngspice
 
-# Run a testbench
+# Run the iTCM AC/DC testbench
 ngspice -b spice/testbenches/sst_itcm_acdc.cir -o output.txt
 
-# Or use PySpice for Python-driven parameter sweeps
+# Run the SRC DC/DC testbench
+ngspice -b spice/testbenches/sst_src_dcdc.cir -o output.txt
+
+# For Python-driven parameter sweeps via PySpice:
 pip3 install PySpice
 python3 -c "from PySpice.Spice.NgSpice import NgSpiceShared; print('OK')"
 ```
 
-### Jupyter Notebook: Device Selection Optimizer
+The testbenches produce `.plot` waveform traces viewable in ngspice's built-in viewer or any compatible waveform tool (Gaw, GTKWave, etc.).
 
-A parametric notebook that sweeps the full design space (MV voltage × power level × device class) and produces efficiency heatmaps and an optimal device selector map.
+---
 
-- **Notebook:** [`notebooks/sst/device-selection-optimizer.ipynb`](../notebooks/sst/device-selection-optimizer.ipynb)
-- **Outputs:** Efficiency bar charts, 2D heatmaps, optimal device class map with operating-point markers
+### Sim 1: Device Voltage Class Scaling Explorer (Tier 1 — Canvas Widget)
+
+#### Principle
+
+The central architectural question of SST design is: **which SiC MOSFET voltage class should you use?** The answer depends on the operating point, and the physics is governed by two competing effects:
+
+- **Conduction loss** scales with $R_{DS,on}$, which itself scales as $V_B^{2.5}$ (the theoretical SiC limit). Higher-voltage devices are exponentially worse conductors per unit area, requiring more dies in parallel to carry the current.
+- **Cell count** scales inversely with device voltage class. Higher-voltage devices need fewer series-connected cells to block the MV grid, reducing complexity, component count, and switching-stage losses.
+
+At low power / low MV voltage (e.g., 25 kW / 3.8 kV), a single 10 kV SiC cell can block the entire DC-link voltage (7 kV with margin), so the cell-count advantage dominates — no series losses, fewer gate drivers, highest efficiency. At high power / high MV voltage (e.g., 1 MW / 13.8 kV), even 10 kV devices need multiple series cells (the DC-link exceeds 18 kV), and the conduction-loss penalty of high-voltage dies makes 3.3 kV SiC in a multi-cell ISOP arrangement the winner.
+
+The widget models five device classes (1.2, 1.7, 3.3, 6.5, 10 kV) with their per-die specifications (current rating, on-resistance, cost). For each class, it computes: the number of series cells needed (with 60% voltage derating), the parallel dies per cell, the conduction and switching losses, and the resulting system efficiency.
+
+```sim:sst-device-scaling
+```
+
+#### What to Explore
+
+| Operating Point | Sliders | Expected Winner | Why |
+|-----------------|---------|-----------------|-----|
+| 25 kW / 3.8 kV | MV=3.8, P=0.025 | **10 kV SiC** | Single cell blocks 7 kV DC; zero series-cell losses |
+| 1 MW / 13.8 kV | MV=13.8, P=1.0 | **3.3 kV SiC** | 10 kV needs multiple cells anyway; 3.3 kV has lower $R_{DS,on}$ per die |
+| 10 MW / 34.5 kV | MV=34.5, P=5.0 | **6.5-10 kV SiC** | DC-link >45 kV forces many cells regardless; higher-voltage devices reduce cell count |
+
+Observe how the "Rel. cost" KPI changes — 10 kV SiC dies cost ~50x more than 1.2 kV dies per unit, which dominates the bill of materials at scale.
+
+---
+
+### Sim 2: iTCM ZVS Boundary Map (Tier 1 — Canvas Widget)
+
+#### Principle
+
+In a hard-switched PWM converter, the switching losses ($P_{sw} = E_{sw} \times f_{sw}$) are proportional to the switching frequency. At 10 kV, each switching event dissipates 11 mJ — at 50 kHz, this means 110 W of pure switching loss, twice the conduction loss. You cannot simply raise the frequency to shrink the magnetic components, because losses scale with frequency.
+
+The iTCM (integrated Triangular Current Mode) solution adds a parallel LC branch ($L_b$, $C_b$) across the bridge-leg. This branch carries a triangular high-frequency current that forces the bridge-leg current to reverse polarity every switching cycle. When the current reverses **before** the switch turns on, the MOSFET's parasitic output capacitance ($C_{OSS}$) is naturally discharged — achieving **zero-voltage switching (ZVS)** with near-zero switching loss.
+
+The ZVS condition is:
+
+$$I_{ZVS} = \frac{Q_{OSS}}{T_{dt}}$$
+
+where $Q_{OSS}$ is the MOSFET output charge (scales with blocking voltage) and $T_{dt}$ is the dead-time duration (typically 300 ns). If the turn-off current at any point in the AC grid cycle falls below $I_{ZVS}$, ZVS is lost at that point — and hard-switching losses return.
+
+The widget sweeps the turn-off current across the AC grid cycle (0 to $\pi$) and compares it to the $I_{ZVS}$ threshold. The red-shaded region shows where ZVS is lost. The KPIs show the ZVS coverage percentage and the resulting soft-switching vs. hard-switching power loss.
+
+```sim:sst-zvs-boundary
+```
+
+#### What to Explore
+
+- **Increase load** (slider to 100%) → ZVS coverage improves because the grid current amplitude rises, keeping the turn-off current above $I_{ZVS}$ for more of the cycle.
+- **Decrease $L_b$** (slider to 20 µH) → the triangular current amplitude increases ($I_{tri} = V_{DC}/(2 L_b f_{sw})$), pushing the turn-off current above $I_{ZVS}$ even at grid current peaks. But smaller $L_b$ also means higher RMS current and more conduction loss.
+- **Increase DC-link voltage** (slider to 10 kV) → $Q_{OSS}$ increases (it scales with blocking voltage), raising $I_{ZVS}$ and making ZVS harder to achieve. This is why MV converters are fundamentally harder to soft-switch than LV converters.
+- **Decrease switching frequency** (slider to 20 kHz) → the triangular current amplitude increases (more time for $L_b$ to charge/discharge), extending ZVS coverage — but the magnetic components grow larger.
+
+---
+
+### Sim 3: Dielectric Loss and Thermal Runaway (Tier 1 — Canvas Widget)
+
+#### Principle
+
+In a conventional 50 Hz transformer, oil-impregnated paper or cast epoxy insulation has negligible dielectric losses — the dissipation factor $\tan \delta$ is small, and the frequency is low. In an SST's medium-frequency transformer operating at 50 kHz and several kilovolts, the dielectric loss equation becomes critical:
+
+$$P_{ins} = \epsilon_0 \cdot E^2 \cdot f \cdot \tan \delta \cdot V_{material}$$
+
+The losses scale **quadratically** with electric field ($E^2$) and **linearly** with frequency ($f$). At 50 kHz and 5 kV/mm, the dielectric loss density can be 1000x higher than at 50 Hz and the same field.
+
+The danger is **thermal runaway**: dielectric loss heats the insulation, which raises $\tan \delta$ (which itself increases with temperature), which increases dielectric loss further. If the heat generation rate exceeds the thermal extraction rate, the insulation self-destructs.
+
+The widget models this with an iterative thermal solver: it computes the steady-state temperature considering $\tan \delta$ doubling every 50°C. Standard epoxy ($\tan \delta \approx 3\%$, thermal conductivity $\approx 0.3$ W/m·K) enters thermal runaway at moderate E-fields. Silicone-based potting compound ($\tan \delta < 0.8\%$, thermal conductivity $\approx 1.0$ W/m·K) remains stable due to both lower loss generation and better heat extraction.
+
+```sim:sst-dielectric-loss
+```
+
+#### What to Explore
+
+| Material | tan(δ) slider | Therm. cond. slider | Expected Result |
+|----------|---------------|---------------------|-----------------|
+| Standard epoxy | 3.0% | 0.3 W/mK | **Thermal runaway** above ~3 kV/mm — red zone |
+| Silicone VPP | 0.8% | 1.0 W/mK | **Stable** up to ~10 kV/mm — green zone |
+| High-Tc ceramic | 0.2% | 2.5 W/mK | **Stable** at all explored E-fields |
+
+The temperature curve (yellow trace) shows T vs E-field for the current material. The red dashed line at 120°C marks the thermal limit. The operating point dot turns red when runaway is predicted.
+
+---
+
+### Sim 4: DAB Efficiency Map (Tier 1 — Canvas Widget)
+
+The original DAB (Dual Active Bridge) converter efficiency explorer. This widget models a DAB topology with adjustable switching frequency, input voltage, phase shift, and load — showing the ZVS boundary and efficiency map.
+
+```sim:sst-dab-efficiency
+```
+
+---
+
+### SPICE Testbenches (Tier 3 — ngspice)
+
+For circuit-level deep dives, two ngspice testbenches simulate the actual switching waveforms. These are the most detailed simulations available — they show transistor-level voltage and current traces, resonant tank oscillation, and ZVS transitions.
+
+#### Testbench 1: iTCM AC/DC Stage
+
+**File:** `spice/testbenches/sst_itcm_acdc.cir`
+
+**Circuit:** A single-phase PFC rectifier with iTCM soft-switching. The grid source is 3.8 kV AC (L-N) at 50 Hz. An LCL filter interfaces to the grid. A parallel LC branch ($L_b$ = 120 µH, $C_b$ = 4.7 µF) generates the triangular current for ZVS. Two 10 kV SiC MOSFETs form a half-bridge switching at 50 kHz with 300 ns dead-time. The DC-link is 7 kV, loaded at 25 kW (1960 Ω).
+
+**What to look for in the waveforms:**
+
+| Plot | What It Shows | How to Interpret |
+|------|--------------|------------------|
+| `i(Lg)` | Grid-side inductor current | Should follow 50 Hz sinusoid with small HF ripple — confirms PFC operation |
+| `i(Lb)` | Triangular branch current | Should be a triangle wave at 50 kHz — confirms iTCM action |
+| `v(3)` | Switch node (half-bridge midpoint) | Should transition to 0V before gate-on — confirms ZVS |
+| `v(6), v(7)` | Gate signals | Should show 300 ns dead-time between complementary pulses |
+| `v(5)` | DC-link voltage | Should be stable at 7 kV with small ripple |
+
+**To run:**
+
+```bash
+ngspice -b spice/testbenches/sst_itcm_acdc.cir -o output.txt
+```
+
+#### Testbench 2: SRC DC/DC Stage
+
+**File:** `spice/testbenches/sst_src_dcdc.cir`
+
+**Circuit:** A Series Resonant Converter (SRC) providing isolated DC/DC conversion from 7 kV to 400 V. The MV-side H-bridge (four 10 kV SiC MOSFETs) switches at 50 kHz. The resonant tank ($L_r$ = 200 µH, $C_r$ = 50 nF) is tuned to ~50.3 kHz — near resonance for "DC transformer" operation. An ideal transformer (n = 52:6) provides galvanic isolation. The LV-side synchronous rectifier uses four 1200 V SiC MOSFETs with a 300 ns phase shift for ZVS alignment.
+
+**What to look for in the waveforms:**
+
+| Plot | What It Shows | How to Interpret |
+|------|--------------|------------------|
+| `i(Lr)` | Resonant tank current | Should be sinusoidal at ~50 kHz — confirms resonance operation |
+| `v(5)` | Primary (MV-side) voltage | Square wave at 50 kHz, 7 kV amplitude |
+| `v(7)` | Secondary (LV-side) voltage | Square wave at 50 kHz, ~800 V amplitude (7 kV / 8.67 ratio) |
+| `v(9)` | Output voltage | Should settle at ~400 V DC with small ripple |
+| `v(10), v(11)` | MV-side gate signals | Complementary with 300 ns dead-time |
+| `v(12), v(13)` | LV-side gate signals | Phase-shifted by 300 ns from MV-side for ZVS alignment |
+
+**To run:**
+
+```bash
+ngspice -b spice/testbenches/sst_src_dcdc.cir -o output.txt
+```
+
+---
+
+### Jupyter Notebook: Device Selection Optimizer (Tier 2)
+
+**File:** `notebooks/sst/device-selection-optimizer.ipynb`
+
+This notebook performs a systematic sweep of the SST design space, computing efficiency for every combination of MV grid voltage (3-35 kV), power level (25 kW - 10 MW), and SiC device class (1.2-10 kV). It produces three visualization sections:
+
+1. **Efficiency bar charts** at three canonical operating points (25 kW/3.8 kV, 1 MW/13.8 kV, 10 MW/34.5 kV) — showing which device class wins at each scale
+2. **2D efficiency heatmaps** for three device classes (1.7 kV, 3.3 kV, 10 kV) — showing the full design space with efficiency as color
+3. **Optimal device selector map** — a single chart showing which device class is optimal at every operating point, with the three canonical points marked
+
+**To run:**
+
+```bash
+cd notebooks/sst
+pip3 install numpy matplotlib jupyter
+jupyter notebook device-selection-optimizer.ipynb
+```
+
+Run all cells (Cell → Run All). Saved figures appear in `docs/assets/`.
+
+---
 
 ### KiCad Schematic References
 
-CircuitSmith-compatible KiCad schematic references are provided in the `kicad/` directory:
+**Directory:** `kicad/`
 
-| Schematic | Topology | Key Components |
-|-----------|----------|----------------|
-| `kicad/README.md` | iTCM cell + SRC DC/DC + ISOP stack | 10 kV SiC, MF transformer, resonant tank |
+CircuitSmith-compatible schematic references documenting the three core SST topologies:
 
-The schematics document the topology, component values, and SPICE simulation hooks for each stage of the SST.
+| File | Topology | Description |
+|------|----------|-------------|
+| `kicad/README.md` | iTCM AC/DC cell | Single-cell PFC rectifier with iTCM LC branch, 10 kV SiC half-bridge, LCL filter |
+| `kicad/README.md` | SRC DC/DC stage | Series Resonant Converter with MV-side H-bridge, resonant tank, MF transformer, LV-side rectifier |
+| `kicad/README.md` | 5-cell ISOP stack | Input-Series Output-Parallel multi-cell architecture with cell bypass and N+2 redundancy |
+
+Each schematic reference includes component value tables (inductor values, capacitor values, MOSFET part numbers, transformer specs) and SPICE simulation hooks pointing to the corresponding testbench files.
 
 ---
 
