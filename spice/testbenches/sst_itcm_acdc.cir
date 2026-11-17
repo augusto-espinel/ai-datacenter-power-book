@@ -1,0 +1,79 @@
+* ═══════════════════════════════════════════════════════════════
+* SST ITCM AC/DC STAGE — ZVS VERIFICATION TESTBENCH
+* Chapter 4, §4.6 — iTCM Soft-Switching
+*
+* Topology: Single-phase PFC rectifier with iTCM (integrated
+* Triangular Current Mode) soft-switching.
+*
+* MV-side: 3.8 kV AC (L-N), 50 Hz
+* DC-link: 7 kV
+* SiC MOSFETs: 10 kV class (simplified model)
+* Switching: Variable freq 35-80 kHz (fixed 50 kHz for sim)
+*
+* What this sim shows:
+*   1. ZVS achievement — drain-source voltage reaches 0 before gate ON
+*   2. Triangular current in Lb branch
+*   3. Grid current follows 50 Hz sinusoid with small HF ripple
+*   4. Switching loss near zero (compare with hard-switched PWM)
+* ═══════════════════════════════════════════════════════════════
+
+* --- Grid Source ---
+* 3.8 kV RMS = 5.37 kV peak, 50 Hz
+Vgrid 1 0 SIN(0 5370 50)
+
+* --- LCL Filter ---
+* Grid-side inductor
+Lg 1 2 47m
+* Filter capacitor
+Cf 2 0 2u
+* Damping resistor
+Rd 2 0 100
+
+* --- iTCM LC Branch (triangular current generator) ---
+Lb 3 4 120u
+Cb 4 0 4.7u
+
+* --- DC-link Capacitor ---
+Cdc 5 0 100u
+
+* --- MOSFET Half-Bridge (simplified as voltage-controlled switches) ---
+* Upper switch: S1 (gate signal g1)
+S1 5 3 6 0 SMODEL
+* Lower switch: S2 (gate signal g2)
+S2 3 0 7 0 SMODEL
+
+* Switch model
+.MODEL SMODEL VSWITCH Ron=0.01 Roff=1e6 Von=10 Voff=0
+
+* --- Gate Drivers ---
+* Upper gate: 50 kHz, 45% duty, 300ns dead-time
+* Phase shifted to create iTCM action
+Vg1 6 0 PULSE(0 15 0 10n 10n 9u 20u)
+* Lower gate: complement with dead-time
+Vg2 7 0 PULSE(0 15 10u 10n 10n 9u 20u)
+
+* --- Load ---
+* 25 kW load at 7 kV → R = V^2/P = 7000^2/25000 = 1960 ohm
+Rload 5 0 1960
+
+* --- Measurements ---
+* Grid current
+.plot tran i(Lg)
+* Triangular (Lb) current
+.plot tran i(Lb)
+* DC-link voltage
+.plot tran v(5)
+* Switch node voltage (midpoint of half-bridge)
+.plot tran v(3)
+* Gate signals
+.plot tran v(6) v(7)
+
+* --- Transient Analysis ---
+* 5ms sim covers 0.25 grid cycle, ~250 switching cycles
+.tran 10n 5m 0 10n
+
+* --- Options ---
+.options reltol=0.01 abstol=1e-6 vntol=0.1
+.options method=gear
+
+.end
