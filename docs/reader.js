@@ -84,9 +84,16 @@
 
     // Code blocks → detect ASCII diagrams + sim placeholders
     const origCode = renderer.code.bind(renderer);
-    renderer.code = function (token) {
-      const code = token.text || '';
-      const lang = token.lang || '';
+    renderer.code = function(code, lang, escaped) {
+      // marked v12 passes positional args: (code, lang, escaped)
+      // Some versions may pass a token object — handle both
+      if (typeof code === 'object' && code !== null) {
+        var tok = code;
+        code = tok.text || '';
+        lang = tok.lang || '';
+        escaped = tok.escaped;
+      }
+      lang = lang || '';
       if (lang === 'ascii' || lang === 'diagram') {
         return `<pre class="ascii-diagram"><code>${escHtml(code)}</code></pre>`;
       }
@@ -99,7 +106,7 @@
         const simId = lang.substring(4).trim();
         return `<div class="sim-embed" data-sim="${escAttr(simId)}"></div>`;
       }
-      return origCode(token);
+      return origCode(code, lang, escaped);
     };
 
     // Headings → strip {#custom-id} and add IDs for TOC
