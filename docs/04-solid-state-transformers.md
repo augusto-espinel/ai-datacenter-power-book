@@ -4,7 +4,9 @@
 > - [AI Data Center Guide — Part 4.7: The DC Power Revolution (SST section)](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-7-the-dc-power-revolution-48v-400v-800v-and-disaggregated-sidecar-power)
 > - [AI Data Center Guide — Part 4.4: Transformers, Harmonics & SST harmonics context](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-4-transformers-harmonics-and-the-ai-non-linear-load-problem)
 
-> 📚 **Primary reference:** D. ETH Zurich, *"10 kV SiC-Based Medium-Voltage Solid-State Transformer for Data Center Power Supplies,"* PhD dissertation, ETH Zurich, 2019. All measured efficiency figures, topology comparisons, and design trade-offs cited in this chapter originate from this work unless otherwise noted.
+> 📚 **Primary reference (circuit physics):** D. ETH Zurich, *"10 kV SiC-Based Medium-Voltage Solid-State Transformer for Data Center Power Supplies,"* PhD dissertation, ETH Zurich, 2019. All measured efficiency figures, topology comparisons, and design trade-offs in §4.6–§4.9 originate from this work.
+>
+> ⚠️ **Temporal scope:** ETH Zurich's dissertation was completed in 2019, when AI rack power was 15–40 kW and the 400 VDC distribution standard was emerging. The **system-level architecture** proposed in the thesis (25 kW per-rack single-cell SST → 400 VDC) has been superseded by the 2026 industry reality of **1–10 MW perimeter/sidecar SSTs → 800 VDC / ±400 VDC** (OCP SST v0.3, NVIDIA 800V HVDC). However, the **circuit-level engineering** (iTCM soft-switching, MF-MV dielectric loss, calorimetric measurement, parasitic capacitance management) remains the definitive reference and applies directly within each cell of a modern multi-cell SST.
 
 ---
 
@@ -47,44 +49,68 @@ The SST **outperforms** the LFT solution specifically for **MV-AC to LV-DC conve
 
 ---
 
-## 4.3 The Data Center Motivation
+## 4.3 The Data Center Motivation (2019 vs 2026)
 
-The ICT sector consumes approximately **10% of the world's generated electric energy** [ETH Zurich 2019, §1.2], and data centers are the fastest-growing segment. The power supply chain in a conventional data center involves:
+### The 2019 Context: Per-Rack SST at 25 kW
 
-```
-MV-AC Grid → LFT → UPS → PDU (LFT) → PSU (PFC + DC/DC) → Server
-  35 kV      480V    480V     208V        400V/12V
-```
-
-Each arrow represents a conversion with associated losses. The shift to **400 V DC distribution** (Chapter 11) eliminates the UPS, one LFT, and the rack-internal PFC rectifier, improving efficiency by ~7%. But the remaining LFT — stepping from MV to 400 V — is still a 50 Hz component in a DC system.
-
-The SST-based architecture goes further:
+When ETH Zurich conducted his research (2014–2019), a high-density CPU/early-GPU rack drew **15–40 kW**. The thesis proposed running MV-AC (6.6 kV phase-to-phase, 3.8 kV phase-to-neutral) directly to each server rack and placing a **25 kW single-phase SST** inside or atop each rack to output 400 VDC:
 
 ```
 MV-AC Grid → SST → 400 V DC Bus → Server Rack DC/DC → Server
-  6.6 kV      400V      12V
+  3.8 kV      400V      12V
 ```
 
-The SST **directly interfaces the MV-AC grid to the 400 V DC bus**, eliminating the LFT entirely. Power is distributed at MV level throughout the data center (e.g., 6.6 kV phase-to-phase, 3.8 kV phase-to-neutral), with individual single-phase SSTs feeding each server rack at 20–40 kW. The advantages of MV distribution include:
+The advantages of per-rack MV distribution included lower cable cross-sections, lower ohmic losses, per-rack power conversion with redundancy, and bidirectional energy flow for on-site renewables.
 
-- **Lower cable cross-sections** (for the same power, current scales as $1/V$)
-- **Lower ohmic losses** in distribution cabling ($P_{\text{loss}} \propto I^2$)
-- **Per-rack power conversion**, enabling redundancy and granular control
-- **Bidirectional energy flow** for integrating on-site renewables or battery storage
+### The 2026 Reality: Megawatt-Scale Perimeter SSTs at 800 VDC
 
-### System Specifications (ETH Zurich SST)
+The AI factory era invalidated the per-rack SST premise. Rack power exploded from 30–40 kW to **140 kW → 600 kW → >1 MW** in just a few years:
 
-| Parameter | Symbol | Value |
-|-----------|--------|-------|
-| Rated power | $P$ | 25 kW |
-| MV-side AC voltage (rms) | $u_g$ | 3.8 kV |
-| LV-side DC voltage | $U_{\text{DC,LV}}$ | 400 V |
-| Mains frequency | $f_g$ | 50 Hz |
-| Target efficiency | $\eta_{t,\text{SST}}$ | **98%** |
-| Achieved efficiency (measured) | $\eta_{\text{SST}}$ | **98.1%** |
-| Achieved power density | $\rho_{\text{SST}}$ | **1.76 kW/L** |
+| Rack Generation | Power | Year |
+|-----------------|-------|------|
+| GB200 / GB300 NVL72 | ~132–155 kW | 2025–2026 |
+| Vera Rubin NVL72 / NVL144 | ~188–228 kW (up to 330 kW DSX) | 2026–2027 |
+| Kyber / Rubin Ultra | ~600–660 kW → 1 MW target | 2027–2028 |
 
-The 98% efficiency target was mandated by the **Swiss National Research Program 70** as part of the Swiss Energy Strategy 2050, which requires a 13% per-capita decrease in electric energy consumption by 2035 compared to 2000. This means the SST must generate **less than half the losses** of the benchmark commercial benchmark SST (96% efficiency at full load).
+At these power levels, routing MV-AC to every rack and placing a 25 kW SST on each became physically and economically unworkable. The industry converged on a different architecture:
+
+```
+MV-AC Grid → Perimeter/Sidecar SST → 800 V DC Bus → Rack DC/DC → GPU
+  13.8/34.5 kV     1–10 MW block         800V/±400V     6V→sub-1V
+```
+
+**Key 2026 industry standards and milestones:**
+
+- **OCP Solid-State Transformer Specification v0.3** (June 2026, authored by Google, Microsoft, NVIDIA):
+  - Input: 13.8 kV or 34.5 kV MV-AC (US grid) / 11 kV (EU/UK)
+  - Building block: **1 MW modular**, scaling to **5 MW or 10 MW** systems
+  - Output: **800 V DC** bus (or ±400 V DC bipolar)
+  - Efficiency: **≥ 98% from 50% to full load**
+  - Transient overload: **150% for 150 ms** (absorbing synchronized GPU cluster power steps)
+
+- **NVIDIA 800V HVDC Architecture** (announced May 2025, production target 2027):
+  - Monopolar 800 V DC (2-wire, +800 V and return)
+  - Supports 1 MW+ racks (Kyber class)
+  - Claims 45% copper reduction, 85% more power per conductor, 30% TCO reduction
+
+- **OCP Mt. Diablo** (hyperscaler coalition: Google, Meta, Microsoft, Amazon):
+  - Bipolar ±400 V DC (3-wire, center-grounded) — leverages EV supply chain for connectors, contactors, switchgear
+  - Scales 100 kW to 1 MW per rack
+
+The SST moved **upstream** from the rack to the facility perimeter or row-end sidecar, converting MV-AC to 800 VDC in a single megawatt-scale block. The 800 VDC bus then distributes clean DC power throughout the data hall to each rack, where a compact DC/DC converter (800 V → 6 V or 12 V) handles the final step-down.
+
+### System Specifications: From ETH Zurich (2019) to OCP v0.3 (2026)
+
+| Parameter | ETH Zurich SST (2019) | OCP SST v0.3 (2026) | commercial venture (2026) |
+|-----------|---------------------|----------------------|-------------------------|
+| Rated power | 25 kW | 1–10 MW modular | 3.3 MW |
+| MV-side AC voltage | 3.8 kV (L-N) | 13.8 or 34.5 kV | 13.8 kV |
+| LV-side DC voltage | 400 V | 800 V (or ±400 V) | 800 V |
+| Target efficiency | 98% | ≥ 98% | 98.5% |
+| Measured efficiency | 98.1% (calorimetric) | TBD (pre-production) | TBD (pre-production) |
+| Power density | 1.76 kW/L | ~100 kW/m³ (industry target) | "10× smaller" (claim) |
+| Topology | Single-cell IBE, 10 kV SiC | ISOP CHB / Matrix (industry) | Proprietary |
+| Placement | Per-rack | Perimeter / sidecar | Perimeter / sidecar |
 
 ---
 
@@ -92,15 +118,23 @@ The 98% efficiency target was mandated by the **Swiss National Research Program 
 
 The transition from LFT to SST is not straightforward. Four fundamental engineering challenges must be solved:
 
-### 4.4.1 Interfacing the Medium-Voltage Grid
+### 4.4.1 Interfacing the Medium-Voltage Grid: The Scaling Problem
 
-The MV-side of the SST must block several kilovolts. There are two architectural approaches:
+The MV-side of the SST must block several kilovolts. The architectural choice between multi-cell and single-cell approaches **depends critically on the MV grid voltage and power level** — and the optimum shifts dramatically between ETH Zurich's 25 kW / 3.8 kV prototype and a modern 1–10 MW / 13.8–34.5 kV data center SST.
 
-**Multi-cell approach:** Series-connect several low-voltage converter cells (1200–1700 V SiC MOSFETs or IGBTs), each handling a fraction of the total blocking voltage. This is mature but **highly complex** — a 25 kW SST might use 5–10 ISOP-connected cells, each with its own gate drivers, isolated supplies, sensors, and control circuitry. The commercial benchmark benchmark uses five ISOP cells.
+**Multi-cell approach (ISOP):** Series-connect multiple low-voltage converter cells (1200–1700 V or 3.3 kV SiC MOSFETs), each handling a fraction of the total blocking voltage. This is mature, modular, and provides **N+1 / N+2 cell-level redundancy** — a failed cell is bypassed and the remaining cells absorb the voltage headroom without dropping the MW-scale block offline.
 
-**Single-cell approach:** Use emerging **10–15 kV SiC MOSFETs** to interface the MV grid directly with one converter cell. This dramatically reduces complexity but demands careful MV insulation and device handling. The ETH Zurich SST uses Wolfspeed CPM3-10000-0350 (10 kV, 20 A, 3rd generation) devices.
+**Single-cell approach:** Use **10–15 kV SiC MOSFETs** to interface the MV grid directly with one converter cell. This dramatically reduces complexity but demands careful MV insulation and device handling, and has **zero internal cell redundancy**.
 
-> **Design rule:** The single-cell approach is superior when 10 kV SiC devices are available — the ETH Zurich SST achieves **4× the power density** and **2.1% higher efficiency** than the multi-cell commercial benchmark benchmark, with fewer components and lower complexity.
+> **Why ETH Zurich's single-cell approach was correct at 25 kW / 3.8 kV but NOT at 1 MW / 13.8 kV:**
+>
+> At 3.8 kV AC (5.4 kV peak → 7 kV DC link), a 10 kV SiC device has sufficient margin. At 13.8 kV AC (11.3 kV L-N peak → >18 kV DC link), **even 10 kV devices require multiple cells in series** — the single-cell advantage vanishes. At 34.5 kV AC (>28 kV L-N peak → >45 kV DC link), the requirement for series-connected cells is unavoidable regardless of device voltage class.
+>
+> Simultaneously, as power scales from 25 kW to 1–10 MW, the current rating per die becomes the binding constraint. 10 kV SiC dies carry only ~20 A per die (vs 202 A for 1.2 kV and 52 A for 3.3 kV), forcing dozens of ultra-expensive thick-epi dies in parallel just to carry the current — their high specific $R_{\text{DS,on}} \propto V_B^{2.5}$ actually *degrades* full-load conduction efficiency.
+
+**The 2026 industry consensus:** Multi-cell ISOP (Cascaded H-Bridge or Matrix) using **1.7 kV and 3.3 kV SiC MOSFET modules** (Wolfspeed, Infineon CoolSiC, onsemi, ROHM, Microchip HV-D3) at 40–50 kW per cell, with 10–14 cascaded cells per phase. A 2026 UK Semiconductor Catapult study found **3.3 kV SiC delivered the highest full-load system efficiency (98.54%)** across every topology tested for a 1 MW, 11 kV→800 VDC SST block — beating both 1.2 kV (too many series cells) and 10 kV (too much conduction loss and parallel die count). 10 kV+ SiC is viewed as a **later-phase cell-count reducer for 34.5 kV substation-level SSTs** (2029+), once wafer yields and current ratings mature.
+
+> **Design rule (updated):** At 25 kW / 3.8 kV, the single-cell 10 kV approach is superior (ETH Zurich's results confirm this). At 1–10 MW / 13.8–34.5 kV, **modular ISOP using 1.7–3.3 kV SiC is the commercial winner** — it trades higher cell count for automotive-volume supply chain, N+2 redundancy, and lower conduction losses. The two approaches are complementary across different voltage/power regimes, not competitive.
 
 ### 4.4.2 Medium-Voltage Insulation at Medium Frequency
 
@@ -182,7 +216,7 @@ MV-AC ──LCL──┬─── 10 kV SiC ───┬─── 10 kV SiC ─�
 **Advantages:** Greatly reduced complexity; highest efficiency and power density; fewer failure points.
 **Disadvantages:** Requires 10 kV SiC devices (still emerging technology); full MV insulation of all components; no cell-level redundancy.
 
-> **The verdict:** The single-cell IBE approach, enabled by 10 kV SiC MOSFETs, is the **clear winner** for data center SSTs. The ETH Zurich SST demonstrates **98.1% efficiency** and **1.76 kW/L** power density — outperforming the multi-cell commercial benchmark benchmark by **2.1% efficiency** (i.e., less than half the losses) and **4.4× power density**.
+> **The verdict (context-dependent):** At 25 kW / 3.8 kV, the single-cell IBE approach with 10 kV SiC MOSFETs is the clear winner — ETH Zurich's SST demonstrates 98.1% efficiency and 1.76 kW/L, outperforming the multi-cell commercial benchmark benchmark by 2.1% efficiency and 4.4× power density. However, **at the 1–10 MW / 13.8–34.5 kV scale required by modern AI data centers**, the industry has converged on multi-cell ISOP using 1.7–3.3 kV SiC for its supply-chain maturity, N+2 cell redundancy, and lower conduction losses. The single-cell approach may return for 34.5 kV systems once 10–15 kV SiC devices reach volume production with higher current ratings.
 
 ---
 
@@ -328,7 +362,7 @@ The complete SST (iTCM AC/DC + isolated DC/DC) was tested at full load with **ca
 | Power density | 0.4 kW/L | **1.76 kW/L** | **4.4×** |
 | Bidirectional | No | Yes | — |
 
-The ETH Zurich SST generates **less than half the losses** of the commercial benchmark benchmark while being **4.4× smaller**. This demonstrates that the single-cell approach with 10 kV SiC devices is fundamentally superior to multi-cell topologies for data center SSTs.
+The ETH Zurich SST generates **less than half the losses** of the commercial benchmark benchmark while being **4.4× smaller**. This demonstrates that the single-cell approach with 10 kV SiC devices is fundamentally superior to multi-cell topologies **at the 25 kW / 3.8 kV scale**. However, as shown in §4.4.1, this advantage does not hold at MW scale on 13.8–34.5 kV grids, where the industry has converged on multi-cell ISOP with 1.7–3.3 kV SiC.
 
 ### DC/DC Converter Loss Distribution (Full Load)
 
@@ -376,53 +410,79 @@ The ETH Zurich SST extrapolates IEEE 519 limits to higher frequencies and design
 
 ---
 
-## 4.10 The Path to Deployment
+## 4.10 The Path to Deployment (2026 Update)
 
-### What's Ready Now
+### Where the Industry Stands Today
 
-- **10 kV SiC MOSFETs** (Wolfspeed CPM3 series) are commercially available and demonstrate outstanding performance under soft-switching conditions
-- **Single-cell SST topology** has been validated at 25 kW, 98.1% efficiency
+The SST market went from nearly nonexistent to nearly crowded in 2025–2026. Over **$330 million** in venture funding has flowed into SST startups, and the OCP published the first industry-standard SST specification (v0.3) in June 2026. The key players:
+
+| Company | Funding | Approach | Notable |
+|---------|---------|----------|--------|
+| **commercial venture** (US) | $140M | MV-to-800VDC SST | Founded by commercial venture founder (ex-Tesla); backed by a16z |
+| **commercial venture** (US) | $60M | SST sidecar for data centers | ABB as investor/partner |
+| **commercial venture** (SG) | ~$30M | SST for data centers | Incubated by Temasek |
+| **commercial venture** (CH) | €5M | Compact MW-scale SST | Founded by Dr. ETH Zurich (ETH Zurich) + Dr. Pettersson |
+| **Eaton / Delta / Schneider** | — | SST products (incumbent) | Traditional power equipment vendors entering SST market |
+
+### What's Ready Now (Circuit Level)
+
+- **iTCM soft-switching** and **ZVS techniques** for MV SiC are validated and applicable within each ISOP cell
 - **MF MV transformer technology** including silicone insulation and VPP process is proven
-- **iTCM soft-switching** enables switching frequencies 5× higher than hard-switched PWM at MV
+- **1.7 kV and 3.3 kV SiC MOSFET modules** are in automotive-volume production (Wolfspeed, Infineon, onsemi, ROHM, Microchip)
+- **Calorimetric measurement methodology** for >99% efficiency is established
+- **3.3 kV SiC HV-D3 modules** (Microchip) support both CHB and Matrix converter topologies with 6 kV isolation
 
-### What's Still Needed
+### What's Still Needed (System Level)
 
-- **10 kV SiC device maturation:** Current devices are single-chip, 20 A modules. Higher current ratings or module-level integration (with built-in gate drivers) would simplify converter design.
-- **Cost reduction:** 10 kV SiC devices are still expensive. Volume production and competing technologies (e.g., GaN at lower voltages, Si IGBTs at higher voltages) will drive costs down.
-- **MV circuit breakers:** Standard MV breakers are large and designed for much higher currents. Compact solid-state or hybrid breakers matching the SST's power density are needed.
-- **Long-term reliability data:** The SST has been validated in laboratory conditions. Field deployment data over 10+ years is needed to prove reliability comparable to LFTs.
-- **Dielectric material improvement:** Even the silicone compound's $\tan \delta = 0.8\%$ generates measurable losses. Materials with lower dissipation factor and higher thermal conductivity would further improve transformer power density.
+- **First commercial MW-scale SST products:** Most startups are in prototype/pre-production stage (2026–2027). The OCP v0.3 spec sets targets but no product has been certified against it yet.
+- **DC protection ecosystem:** DC circuit breakers, fuses, and connectors rated for 800 VDC at kiloampere scale are still maturing. DC arcs do not self-extinguish at zero-crossing.
+- **Long-term reliability data:** SSTs must demonstrate 10–20 year field reliability comparable to LFTs (which routinely last 30+ years).
+- **10 kV+ SiC device maturation:** For 34.5 kV substation-level SSTs, 10–15 kV SiC needs higher current ratings, lower cost, and volume production to become the cell-count reducer the industry expects.
+- **Regulatory and code updates:** A century of AC-based electrical codes must be rewritten for DC distribution. DC arc-flash, shock-boundary, and fault-interruption standards are still being defined.
+
+### Case Study: commercial venture AG (ETH Zurich's Startup)
+
+In a telling validation of how the field evolved, **Dr. ETH Zurich himself pivoted** from his 2019 PhD architecture when he founded **commercial venture AG** in Zurich in 2025:
+
+| Parameter | ETH Zurich PhD (2019) | commercial venture (2026) |
+|-----------|---------------------|-------------------------|
+| Rated power | 25 kW | **3.3 MW** (132× increase) |
+| Input voltage | 3.8 kV AC (L-N) | **13.8 kV AC** (US grid standard) |
+| Output voltage | 400 V DC | **800 V DC** (OCP/NVIDIA standard) |
+| Topology | Single-cell, 10 kV SiC only | **Proprietary, SiC + GaN** (multi-cell likely) |
+| Placement | Per-rack | **Perimeter / sidecar** |
+| Efficiency | 98.1% (measured) | 98.5% (target) |
+
+The startup raised a **€5M seed round** in March 2026 (co-led by World Fund and Vsquared Ventures), is part of the Ignite Next Spring 2026 deep tech accelerator, and is growing to 15 people. ETH Zurich told TechCrunch: *"We haven't seen something that is as small as our system will be."* The company claims **10× smaller** than existing solutions and **~90% less material** usage.
+
+The pivot is instructive: the researcher who proved single-cell 10 kV SiC superiority at 25 kW recognized that at MW scale on 13.8 kV grids, the engineering optimum shifts to a different architecture — one that combines his deep circuit-physics expertise (high-frequency operation, soft-switching, advanced magnetics) with the industry-standard MV input and 800 VDC output that hyperscalers demand.
 
 ### The Scaling Path
 
-The ETH Zurich SST is rated at 25 kW per single-phase unit. For three-phase data center applications:
-
-- **3 × single-phase SSTs** (one per phase) → 75 kW per rack cluster
-- **Direct MV-AC to 400 V DC** conversion eliminates all intermediate stages
-- **Per-rack granularity** → natural redundancy, no single point of failure for the data center
-
-For higher power levels (e.g., 100+ kW per rack with next-generation GPUs), the SST can be scaled by:
-- Parallel operation of multiple SSTs on the LV-side
-- Higher current 10 kV SiC devices (in development)
-- Multi-phase interleaved iTCM for lower ripple and higher effective frequency
+For data center operators planning 2027–2028 deployments:
+1. **Phase 1–2 (2026–2027):** Sidecar retrofits on existing AC facilities — 800VDC power rack beside compute rack, fed from 415/480 VAC. No SST yet.
+2. **Phase 3 (2028–2029):** Facility-level 800VDC distribution with first commercial MW-scale SSTs at the perimeter. SST replaces LFT + rectifier chain.
+3. **Phase 4 (2029+):** 34.5 kV substation-level SSTs using 10 kV+ SiC to minimize cell count. Potential matrix converter topologies eliminating MV DC-link capacitors.
 
 ---
 
 ## 4.11 Key Takeaways
 
-1. **SSTs replace the LFT** for MV-AC to LV-DC conversion in data centers, eliminating the largest passive component and enabling per-rack power conversion at 98.1% efficiency.
+1. **SSTs replace the LFT** for MV-AC to LV-DC conversion in modern AI data centers, collapsing multiple conversion stages into one. The 2026 industry target is **1–10 MW perimeter/sidecar SSTs** converting 13.8–34.5 kV MV-AC directly to 800 VDC (OCP v0.3 spec), not the per-rack 25 kW SSTs envisioned in 2019.
 
-2. **10 kV SiC MOSFETs** are the enabling technology — they allow single-cell topologies with dramatically lower complexity than multi-cell approaches.
+2. **The multi-cell vs. single-cell debate is voltage-and-power-dependent.** At 25 kW / 3.8 kV, single-cell 10 kV SiC wins decisively (ETH Zurich 2019). At 1–10 MW / 13.8–34.5 kV, **modular ISOP using 1.7–3.3 kV SiC** is the commercial winner — offering automotive-volume supply chain, N+2 cell redundancy, and lower conduction losses. 10 kV+ SiC will return as a cell-count reducer for 34.5 kV systems post-2029.
 
-3. **Soft-switching is essential** at MV. The iTCM topology reduces AC/DC switching losses by 30×, enabling 99.1% efficiency in the AC/DC stage.
+3. **Soft-switching is essential** at MV. The iTCM topology reduces AC/DC switching losses by 30×, enabling 99.1% efficiency in the AC/DC stage. This applies within each cell of a modern multi-cell SST.
 
 4. **MF MV transformer insulation** is the hidden challenge. Dielectric losses at 50 kHz + several kV can cause thermal runaway in standard materials. Silicone-based insulation with vacuum pressure potting is required.
 
 5. **Calorimetric measurement** is the only reliable way to verify > 99% efficiency. Electrical methods have insufficient accuracy at these efficiency levels.
 
-6. **The single-cell approach wins** on both efficiency and power density — 98.1% and 1.76 kW/L vs. 96% and 0.4 kW/L for the multi-cell benchmark.
+6. **3.3 kV SiC is the 2026 efficiency sweet spot** for MW-scale ISOP SSTs. The UK Semiconductor Catapult's multi-objective optimization for a 1 MW, 11 kV→800 VDC block found 3.3 kV SiC delivered 98.54% full-load efficiency — beating both 1.2 kV and 10 kV device classes.
 
 7. **Parasitic capacitance, not inductance**, is the primary layout concern in MV converters. This inverts standard LV design rules.
+
+8. **ETH Zurich himself pivoted.** His startup, commercial venture AG (founded 2025, €5M seed), abandoned the single-cell 25 kW / 3.8 kV / 400 VDC / 10 kV SiC-only architecture for a **3.3 MW / 13.8 kV / 800 VDC / SiC+GaN** design — validating that the circuit physics transfers but the system architecture must follow the market.
 
 ---
 
