@@ -365,3 +365,10 @@ body{font-family:var(--font-body);background:var(--bg-void);color:var(--text-bod
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* Sim embed container — ensure it has dimensions */
+.sim-embed {
+  min-height: 400px;
+  width: 100%;
+  overflow: visible;
+}

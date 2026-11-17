@@ -128,6 +128,16 @@
     ctx.fillText(text, x, y);
   }
 
+
+  // ── Safe frame wrapper ──
+  function safeFrame(frameFn, widgetId) {
+    try {
+      frameFn();
+    } catch (err) {
+      console.error('[SimWidgets] ' + widgetId + ' frame error:', err.message);
+    }
+  }
+
   // ════════════════════════════════════════════════════════════
   //  SIM 1: GPU Load Transient (dI/dt Step Response)
   // ════════════════════════════════════════════════════════════
@@ -396,9 +406,10 @@
       var costRatio = res.totalDies ? (res.totalDies * dev.costPer) / Math.max(1, base33.totalDies * DEVICES['3.3'].costPer) : 0;
       kCost.textContent = 'x' + costRatio.toFixed(1);
 
-      requestAnimationFrame(frame);
+      requestAnimationFrame(function() { safeFrame(frame, 'sst-device-scaling'); });
     }
-    frame();
+    // Delay first frame until canvas has dimensions
+    setTimeout(function() { safeFrame(frame, 'sst-device-scaling'); }, 50);
   });
 
   // ════════════════════════════════════════════════════════════
@@ -485,9 +496,9 @@
       kPswH.textContent = pSwHard.toFixed(1) + ' W';
       kPswH.className = 'sim-kpi-val ' + (pSwHard < 10 ? 'good' : pSwHard < 50 ? 'warn' : 'danger');
 
-      requestAnimationFrame(frame);
+      requestAnimationFrame(function() { safeFrame(frame, 'sst-zvs-boundary'); });
     }
-    frame();
+    setTimeout(function() { safeFrame(frame, 'sst-zvs-boundary'); }, 50);
   });
 
   // ════════════════════════════════════════════════════════════
