@@ -61,10 +61,11 @@
   function createSlider(parent, opts) {
     var wrap = document.createElement('div');
     wrap.className = 'sim-control-group';
+    var initDisplay = (opts.format ? opts.format(opts.value) : opts.value) + (opts.unit || '');
     wrap.innerHTML =
       '<div class="sim-control-label">' +
         '<span>' + opts.label + '</span>' +
-        '<span class="sim-control-val" id="' + opts.id + '-val">' + opts.value + (opts.unit || '') + '</span>' +
+        '<span class="sim-control-val" id="' + opts.id + '-val">' + initDisplay + '</span>' +
       '</div>' +
       '<input type="range" class="sim-slider" id="' + opts.id + '"' +
         ' min="' + opts.min + '" max="' + opts.max + '" step="' + (opts.step || 1) + '" value="' + opts.value + '">';
@@ -325,7 +326,8 @@
   //  SIM 5: SST Device Voltage Class Scaling Explorer
   // ════════════════════════════════════════════════════════════
   register('sst-device-scaling', function (container) {
-    var p = { mvKv: 13.8, powerMW: 1.0, deviceClass: 3.3 };
+    var DEVICE_CLASSES = ['1.2', '1.7', '3.3', '6.5', '10'];
+    var p = { mvKv: 13.8, powerMW: 1.0, classIdx: 2 }; // default index 2 => '3.3' kV
 
     var DEVICES = {
       '1.2': { vBlock: 1200,  iDie: 202, rdsOn: 0.045, costPer: 8 },
@@ -343,8 +345,9 @@
 
     createSlider(card.controls, { id: 'ds-mv', label: 'MV Grid (kV)', min: 3, max: 35, step: 0.1, value: p.mvKv, unit: ' kV', onChange: function (v) { p.mvKv = v; } });
     createSlider(card.controls, { id: 'ds-pwr', label: 'Power (MW)', min: 0.025, max: 10, step: 0.025, value: p.powerMW, unit: ' MW', onChange: function (v) { p.powerMW = v; } });
-    createSlider(card.controls, { id: 'ds-dev', label: 'Device Class (kV)', min: 1.2, max: 10, step: 0.1, value: p.deviceClass, unit: ' kV',
-      format: function(v) { return v.toFixed(1); }, onChange: function (v) { p.deviceClass = v; } });
+    createSlider(card.controls, { id: 'ds-dev', label: 'Device Class (kV)', min: 0, max: DEVICE_CLASSES.length - 1, step: 1, value: p.classIdx, unit: ' kV',
+      format: function(v) { return DEVICE_CLASSES[Math.round(v)] || '3.3'; },
+      onChange: function (v) { p.classIdx = Math.round(v); } });
 
     var kCells = createKPI(card.kpis, { id: 'k-cells', label: 'Cells/phase', value: '--' });
     var kDies  = createKPI(card.kpis, { id: 'k-dies', label: 'Parallel dies', value: '--' });
@@ -368,35 +371,78 @@
 
     function frame() {
       var w = card.canvas.clientWidth, h = card.canvas.clientHeight;
-      drawGrid(card.ctx, w, h, { xDivs: 10, yDivs: 6 });
+      drawGrid(card.ctx, w, h, { xDivs: 10, yDivs: 6, zeroLine: false });
 
-      var devKey = p.deviceClass.toFixed(1).replace('.0', '');
+      var devKey = DEVICE_CLASSES[p.classIdx] || '3.3';
       var dev = DEVICES[devKey] || DEVICES['3.3'];
       var res = computeEff(p.mvKv, p.powerMW, devKey);
 
-      var classes = ['1.2', '1.7', '3.3', '6.5', '10'];
-      var barW = w / (classes.length + 1);
-      var maxEff = 99.5, minEff = 88;
+      var classes = DEVICE_CLASSES;
+      var n = classes.length;
+      // Trim y-axis to upper 10% efficiency range (90% to 100%)
+      var minEff = 90.0, maxEff = 100.0;
+      // Reserve top margin (64px) for header + bar value labels, bottom margin (28px) for x-axis labels
+      var topReserve = 64, bottomMargin = 28;
+      var maxBarH = Math.max(40, h - topReserve - bottomMargin);
 
-      for (var i = 0; i < classes.length; i++) {
+      // Symmetrical bar group geometry centered across canvas width
+      var slotW = w / (n + 1);
+      var singleBarW = slotW * 0.58;
+      var firstBarX = slotW * 0.5 + (slotW - singleBarW) * 0.5;
+      var lastBarRight = slotW * (n - 0.5) + (slotW - singleBarW) * 0.5 + singleBarW;
+      var barsCenterX = (firstBarX + lastBarRight) * 0.5;
+
+      // Y-axis reference ticks for 90%, 95%, 100%
+      card.ctx.font = '10px "Share Tech Mono", monospace';
+      card.ctx.textAlign = 'left';
+      card.ctx.fillStyle = 'rgba(92,225,230,0.45)';
+      var yTicks = [90, 95, 100];
+      for (var t = 0; t < yTicks.length; t++) {
+        var ty = (h - bottomMargin) - ((yTicks[t] - minEff) / (maxEff - minEff)) * maxBarH;
+        card.ctx.strokeStyle = 'rgba(13,64,84,0.45)';
+        card.ctx.lineWidth = 1;
+        card.ctx.setLineDash([3, 3]);
+        card.ctx.beginPath();
+        card.ctx.moveTo(0, ty);
+        card.ctx.lineTo(w, ty);
+        card.ctx.stroke();
+        card.ctx.fillText(yTicks[t] + '%', 6, ty - 3);
+      }
+      card.ctx.setLineDash([]);
+
+      for (var i = 0; i < n; i++) {
         var r = computeEff(p.mvKv, p.powerMW, classes[i]);
-        var barH = Math.max(0, ((r.eff - minEff) / (maxEff - minEff)) * h * 0.7);
-        var barX = barW * (i + 0.5);
-        var barY = h - barH - 30;
+        var clampedEff = Math.max(minEff, Math.min(maxEff, r.eff));
+        var barH = ((clampedEff - minEff) / (maxEff - minEff)) * maxBarH;
+        var barX = slotW * (i + 0.5) + (slotW - singleBarW) * 0.5;
+        var barY = h - bottomMargin - barH;
         var isSel = classes[i] === devKey;
-        card.ctx.fillStyle = isSel ? '#00FFCC' : 'rgba(0,200,255,0.3)';
-        card.ctx.fillRect(barX, barY, barW * 0.6, barH);
-        card.ctx.fillStyle = '#E6F9FF';
-        card.ctx.font = '11px monospace';
+
+        card.ctx.fillStyle = isSel ? '#00FFCC' : 'rgba(0,200,255,0.32)';
+        card.ctx.fillRect(barX, barY, singleBarW, barH);
+        if (isSel) {
+          card.ctx.strokeStyle = '#E6F9FF';
+          card.ctx.lineWidth = 1.5;
+          card.ctx.strokeRect(barX, barY, singleBarW, barH);
+        }
+
+        card.ctx.fillStyle = isSel ? '#00FFCC' : '#E6F9FF';
+        card.ctx.font = (isSel ? 'bold ' : '') + '11px "Share Tech Mono", monospace';
         card.ctx.textAlign = 'center';
-        card.ctx.fillText(classes[i] + 'kV', barX + barW * 0.3, h - 12);
-        if (barH > 25) card.ctx.fillText(r.eff.toFixed(2) + '%', barX + barW * 0.3, barY - 6);
+        card.ctx.fillText(classes[i] + ' kV', barX + singleBarW * 0.5, h - 9);
+        card.ctx.fillText(r.eff.toFixed(2) + '%', barX + singleBarW * 0.5, barY - 6);
       }
 
-      drawLabel(card.ctx, 'Efficiency (%) by SiC device class', 8, 18, '#00FFCC');
+      // Centered green & yellow titles positioned cleanly above the bars
       var vLnPeak = p.mvKv * 1000 / Math.sqrt(3) * Math.SQRT2;
       var vDcLink = vLnPeak * 1.35;
-      drawLabel(card.ctx, 'MV: ' + p.mvKv.toFixed(1) + ' kV  |  P: ' + p.powerMW.toFixed(2) + ' MW  |  Vdc: ' + (vDcLink / 1000).toFixed(1) + ' kV', 8, 34, '#FFB800');
+      card.ctx.textAlign = 'center';
+      card.ctx.font = '11px "Share Tech Mono", monospace';
+      card.ctx.fillStyle = '#00FFCC';
+      card.ctx.fillText('Efficiency (90%–100% zoom) by SiC device class', barsCenterX, 18);
+      card.ctx.fillStyle = '#FFB800';
+      card.ctx.fillText('MV: ' + p.mvKv.toFixed(1) + ' kV  |  P: ' + p.powerMW.toFixed(2) + ' MW  |  Vdc: ' + (vDcLink / 1000).toFixed(1) + ' kV', barsCenterX, 34);
+      card.ctx.textAlign = 'left';
 
       kCells.textContent = res.cells;
       kDies.textContent = res.dies;
