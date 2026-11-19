@@ -1,10 +1,9 @@
 # Chapter 15 — Energy Per Token: The Full Cost of AI Inference
 
-> 📖 **Related guide references:**
-> - [AI Data Center Guide — Part 15.1: Efficiency Metrics](https://aidatacenterguide.com/part-15-sustainability-and-efficiency/15-1-efficiency-metrics-pue-wue-erf-ref-and-the-post-pue-metric-stack)
-> - [AI Data Center Guide — Part 7.12: On-Package Power Delivery](https://aidatacenterguide.com/part-7-compute-silicon-and-system-integration/7-12-on-package-power-delivery-and-power-integrity)
-
-> 🚧 **Status:** Architecture placeholder — content to be populated.
+> 📌 **Study Guide Notice:** For related architecture-level references on facility efficiency metrics, embodied carbon, and silicon power delivery, see the **[AI Data Center Guide](https://aidatacenterguide.com/)**:
+> - **[Part 15.1 — Efficiency Metrics: PUE, WUE, ERF, REF & the Post-PUE Metric Stack](https://aidatacenterguide.com/part-15-sustainability-and-efficiency/15-1-efficiency-metrics-pue-wue-erf-ref-and-the-post-pue-metric-stack)**
+> - **[Part 15.6 — Embodied Carbon & Circularity Across the Lifecycle](https://aidatacenterguide.com/part-15-sustainability-and-efficiency/15-6-embodied-carbon-and-circularity-across-the-lifecycle)**
+> - **[Part 7.12 — On-Package Power Delivery & Power Integrity](https://aidatacenterguide.com/part-7-compute-silicon-and-system-integration/7-12-on-package-power-delivery-and-power-integrity)**
 
 ## What This Chapter Covers
 
@@ -245,4 +244,3 @@ But training amortization (Layer 5) can add **0.2–1.8 J/token** for a GPT-4-cl
 - IEA, "Energy and AI" report (2024)
 - NVIDIA H100/H200/B200 specifications and product briefs
 
-*Content will be developed step by step with Augusto.*

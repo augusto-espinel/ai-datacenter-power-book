@@ -1,89 +1,90 @@
 # Chapter 14 — Simulation Engine Reference
 
-> 📖 **Note:** This topic is unique to this book — the simulation architecture is our differentiator.
+> 📌 **Study Guide Notice:** This chapter documents the 3-tier interactive simulation architecture built specifically for this repository. For system-level reference designs and decision calculators, see also **[Appendix B — Reference Designs & Worked Examples](https://aidatacenterguide.com/appendix-appendices-and-reference-data/b-reference-designs-and-worked-examples)** and **[Appendix C — Decision Tables & Calculators](https://aidatacenterguide.com/appendix-appendices-and-reference-data/c-decision-tables-and-calculators)** in the **[AI Data Center Guide](https://aidatacenterguide.com/)**.
+>
+> *Disclaimer: Additional Python notebooks and ngspice/PySpice testbenches for the remaining chapters will be added progressively as their circuit derivations are completed.*
 
-> 🚧 **Status:** Architecture placeholder — content to be populated.
+---
 
 ## Overview
 
-This chapter documents the tiered simulation architecture embedded in the book and how to extend it.
+This repository uses a **3-tier simulation architecture** to connect first-principles equations in the text with interactive and executable models:
 
-## Tier 1: Canvas Widgets (Built-in)
+1. **Tier 1 (T1) — Browser-Native Canvas Widgets (`docs/sims/sim-widgets.js`):** Zero-dependency JavaScript/Canvas simulations embedded directly inside the Markdown chapters.
+2. **Tier 2 (T2) — Python & Jupyter Notebooks (`notebooks/`):** Multi-parameter optimization scripts, semiconductor figure-of-merit sweeps, and electro-thermal solvers.
+3. **Tier 3 (T3) — ngspice / PySpice Circuit Testbenches (`spice/`):** Time-domain and frequency-domain SPICE netlists for switching stages, resonant converters, and PDN impedance networks.
 
-Zero-dependency JavaScript widgets running directly in the browser via Canvas API.
+---
 
-### Available Widgets
+## Tier 1: Browser-Native Canvas Widgets (`docs/sims/sim-widgets.js`)
 
-| Widget ID | Description | Used In |
-|-----------|-------------|---------|
-| `gpu-transient` | dI/dt step response with VRM + decoupling model | Ch. 1, Ch. 6 |
-| `sst-dab-efficiency` | DAB converter efficiency map with ZVS indicator | Ch. 4 |
-| `pue-thermal` | Energy flow breakdown with PUE calculation | Ch. 9 |
+### Currently Implemented Widgets
+
+| Widget ID | Description | Embedded In |
+|-----------|-------------|-------------|
+| `gpu-transient` | GPU $dI/dt$ load-step transient response with VRM & decoupling RLC model | [Ch. 1](#ch01), [Ch. 6](#ch06) |
+| `sst-device-scaling` | MV SiC device voltage class ($1.2\text{–}10\text{ kV}$) vs. cascaded cell count & parallel die scaling | [Ch. 4](#ch04) |
+| `sst-zvs-boundary` | iTCM / resonant ZVS soft-switching boundary & switching loss comparator | [Ch. 4](#ch04) |
+| `sst-dab-efficiency` | Dual Active Bridge (DAB) / SRC efficiency map vs. load & phase shift | [Ch. 4](#ch04) |
+| `sst-dielectric-loss` | Medium-frequency MV transformer dielectric heating & thermal runaway boundary | [Ch. 4](#ch04) |
+| `pue-thermal` | Facility energy-flow breakdown and real-time PUE sensitivity calculator | [Ch. 9](#ch09) |
+| `energy-per-token` | Full 5-layer grid-to-token energy & training amortization calculator | [Ch. 15](#ch15) |
 
 ### Embedding a Widget in Markdown
 
-In any chapter `.md` file, use a fenced code block with the `sim:` prefix:
+In any chapter `.md` file, include a fenced code block with the `sim:` language prefix:
 
 ````markdown
 ```sim:gpu-transient
 ```
 ````
 
-### Adding New Widgets
+### Registering a New Widget
 
-Register a new widget in `docs/sims/sim-widgets.js`:
+Add a factory function in `docs/sims/sim-widgets.js`:
 
 ```javascript
 SimWidgets.register('my-widget', function(container) {
   var card = createCard(container, {
     id: 'my-widget', badge: 'CUSTOM',
-    title: 'My Simulation', subtitle: 'Description'
+    title: 'My Simulation', subtitle: 'Interactive parameter sweep'
   });
-  // Add sliders, canvas drawing, KPIs...
+  // Add sliders, Canvas 2D rendering, and real-time KPIs
 });
 ```
 
-## Tier 2: Python Notebooks
+---
 
-Jupyter notebooks for computational analysis.
+## Tier 2: Python & Jupyter Notebooks (`notebooks/`)
 
-- Stored in `notebooks/` directory
-- Pre-rendered to static HTML via `jupyter nbconvert --to html`
-- Embedded in chapters as iframe links or Binder/Colab badges
+### Currently Available & Planned Notebooks
 
-### Planned Notebooks
+| Path | Status | Scope |
+|------|--------|-------|
+| `notebooks/sst/device-selection-optimizer.ipynb` | **Available** | SiC MOSFET voltage class ($1.2\text{ kV}$ vs. $3.3\text{ kV}$ vs. $10\text{ kV}$) conduction/switching loss optimization for modular SST cells ([Ch. 4](#ch04)) |
+| `notebooks/01-power-chain/` | *Planned* | AC vs. $800\text{ VDC}$ conversion-stage efficiency & copper mass comparison ([Ch. 1](#ch01)) |
+| `notebooks/02-gpu-transients/` | *Planned* | Multi-tier MLCC/polymer PDN impedance synthesis & anti-resonance damping ([Ch. 6](#ch06)) |
+| `notebooks/04-thermal-liquid/` | *Planned* | Cauer/Foster $R_\theta C_\theta$ transient thermal network solver ([Ch. 8](#ch08)) |
 
-| Directory | Topic |
-|-----------|-------|
-| `notebooks/01-power-chain/` | Conversion-stage efficiency accounting, voltage selection calc |
-| `notebooks/02-gpu-transients/` | Decoupling network design, PDN impedance sweep |
-| `notebooks/03-sst-topologies/` | DAB magnetics design, ZVS boundary mapping |
-| `notebooks/04-thermal-liquid/` | Rθ network solver, thermal transient simulation |
+---
 
-## Tier 3: ngspice / PySpice
+## Tier 3: ngspice / PySpice Testbenches (`spice/`)
 
-Full circuit simulation for VRM transient, SST DAB switching, PFC stages.
+### Currently Available & Planned SPICE Netlists
 
-- SPICE models stored in `spice/models/`
-- Subcircuits in `spice/subcircuits/`
-- Testbenches in `spice/testbenches/`
-- Run via `ngspice -b testbench.cir -o output.txt`
-- PySpice wrapper for Python-driven parameter sweeps
+| File | Status | Circuit & Verification Scope |
+|------|--------|------------------------------|
+| `spice/testbenches/sst_itcm_acdc.cir` | **Available** | Integrated Triangular Current Mode (iTCM) AC/DC rectifier stage ZVS zero-voltage switching verification ([Ch. 4](#ch04)) |
+| `spice/testbenches/sst_src_dcdc.cir` | **Available** | Series Resonant Converter (SRC) medium-frequency isolated DC/DC stage operating at resonance ([Ch. 4](#ch04)) |
+| `spice/testbenches/vrm_transient.cir` | *Planned* | Multiphase buck VRM with AVP load-line under GPU current step ([Ch. 5](#ch05)) |
+| `spice/testbenches/decoupling_impedance.cir` | *Planned* | AC small-signal impedance sweep across bulk, MLCC, and package decoupling tiers ([Ch. 6](#ch06)) |
 
-### Planned Testbenches
-
-| File | Circuit | Purpose |
-|------|---------|---------|
-| `vrm_transient.cir` | 6-phase buck VRM | Load step transient response, droop/recovery |
-| `dab_switching.cir` | Dual Active Bridge | ZVS verification, switching losses |
-| `pfc_boost.cir` | PFC boost converter | Harmonic injection, THD measurement |
-| `decoupling_impedance.cir` | PDN network | AC impedance sweep, anti-resonance detection |
-
-### PySpice Quick Start
+### Running SPICE Netlists Locally
 
 ```bash
-pip3 install PySpice
-python3 -c "from PySpice.Spice.NgSpice import NgSpiceShared; print('OK')"
-```
+# Run in batch mode with ngspice
+ngspice -b spice/testbenches/sst_itcm_acdc.cir -o sst_itcm.log
 
-*Content will be developed step by step with Augusto.*
+# Or drive parameter sweeps from Python via PySpice
+pip3 install PySpice
+```

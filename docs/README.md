@@ -6,9 +6,9 @@
 
 ## About This Book
 
-This is **not** another architecture-level reference. The [AI Data Center Guide](https://aidatacenterguide.com) already covers that ground comprehensively — 166 chapters at practitioner depth, spanning siting, strategy, power topology, cooling, networking, and operations.
+This open-source study and simulation companion builds on the comprehensive [AI Data Center Guide](https://aidatacenterguide.com) (166 chapters at practitioner depth, spanning siting, strategy, power topology, cooling, networking, and operations).
 
-This book is the **engineer's deep-dive companion**: it goes below the architecture decisions into the circuit-level physics, component selection, SPICE simulation, and measurement methodology that the system engineer needs to actually specify, build, and validate the power chain from medium voltage down to the GPU die.
+Rather than duplicating baseline architectural material already covered in the AI Data Center Guide, each chapter in this repository links directly to the corresponding sections of [aidatacenterguide.com](https://aidatacenterguide.com) and focuses on **additional circuit-level physics, component dimensioning trade-offs, SPICE/Python simulations, and interactive exploration** from medium voltage down to the GPU die. Full deep-dive chapters are currently live for **Solid-State Transformers ([Chapter 4](./04-solid-state-transformers.md))** and **Energy Per Token ([Chapter 15](./15-energy-per-token.md))**, along with 7 interactive in-browser simulation widgets across the book; additional circuit derivations for the remaining chapters are being added progressively.
 
 **Where the guide tells you _what_ to decide, this book shows you _how_ to engineer it:**
 
@@ -39,9 +39,11 @@ This book is the **engineer's deep-dive companion**: it goes below the architect
 | **9. PUE & Energy Flow** | [Part 15.1–15.2](https://aidatacenterguide.com/part-15-sustainability-and-efficiency) | Interactive energy flow model, pPUE calculation per rack, efficiency optimization sensitivity |
 | **10. Telemetry & PMBus** | [Part 4.12](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-12-metering-power-quality-monitoring-and-electrical-operations) | PMBus protocol deep-dive, Hall-effect sensor signal conditioning, DAQ architecture, Redfish polling |
 | **11. DC Protection Engineering** | [Parts 4.7, 4.11](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-11-grounding-bonding-earthing-lightning-protection-spd-and-emc) | DC arc physics (no zero-crossing), breaker extinction techniques, fuse I²t coordination, connector selection |
-| **12. Safety & Arc Flash** | [Parts 4.11, 4.12](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-12-metering-power-quality-monitoring-and-electrical-operations) | IEEE 1584 calculation walkthrough, PPE category selection, LOTO procedures, grounding design |
-| **13. Measurement & Lab Techniques** | _(not covered by guide)_ | Oscilloscope methods for PI, current probe selection, VRM Bode measurement, PDN impedance injection |
-| **14. Simulation Engine Reference** | _(unique to this book)_ | T1 Canvas widgets, T2 Python notebooks, T3 ngspice/PySpice testbenches — how to use and extend |
+| **12. Safety, Earthing & Arc Flash** | [Parts 4.11, 4.12, 13.3](https://aidatacenterguide.com/part-4-electrical-and-energy-infrastructure/4-11-grounding-bonding-earthing-lightning-protection-spd-and-emc) | IEEE 1584 calculation walkthrough, DC arc flash, ground-grid touch/step voltage, high-frequency EMC bonding |
+| **13. Measurement, Lab Validation & Commissioning** | [Part 13 (13.1, 13.3, 13.6, 13.8)](https://aidatacenterguide.com/part-13-commissioning-and-go-live) | VNA 2-port PDN impedance measurement, VRM Bode injection, high-voltage differential probing, calorimetric efficiency |
+| **14. Simulation Engine Reference** | [Appendices B & C](https://aidatacenterguide.com/appendix-appendices-and-reference-data/b-reference-designs-and-worked-examples) | T1 Canvas widgets, T2 Python notebooks, T3 ngspice/PySpice testbenches — how to use and extend |
+| **15. Energy Per Token: Full Cost of AI Inference** | [Parts 15.1, 15.6, 7.12](https://aidatacenterguide.com/part-15-sustainability-and-efficiency/15-1-efficiency-metrics-pue-wue-erf-ref-and-the-post-pue-metric-stack) | 5-layer grid-to-token energy stack, training amortization, empirical token energy footprint, interactive calculator |
+| **★ Appendices & Reference Data** | [Appendices A–G](https://aidatacenterguide.com/appendix-appendices-and-reference-data) | Circuit & simulation standards index, SPICE/magnetics/dielectric lookup extensions |
 
 ---
 
