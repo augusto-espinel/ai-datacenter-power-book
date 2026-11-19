@@ -1,21 +1,23 @@
-# AI Data Center Power Systems — The System Engineer's Circuit-Level Companion
+# AI Data Center Power Systems — Open-Source Study & Simulation Companion
 
 **From MV to Die — Circuit Engineering, SPICE Simulation, and Interactive Exploration of the Power Delivery Chain**
 
-This is **not** another architecture-level reference. The [AI Data Center Guide](https://aidatacenterguide.com) already covers that comprehensively (166 chapters, vendor-neutral, practitioner depth). This book is the **engineer's deep-dive companion**: circuit-level physics, component selection, SPICE simulation, measurement methodology, and interactive widgets that let you *feel* the engineering tradeoffs.
+This repository is an **open-source engineering study and simulation companion** built alongside the [AI Data Center Guide](https://aidatacenterguide.com) (166 chapters, vendor-neutral, practitioner depth). Rather than duplicating the baseline architectural material covered in the Guide, each chapter links directly to the corresponding sections of [aidatacenterguide.com](https://aidatacenterguide.com) and serves as a workbench for **circuit-level physics, component dimensioning trade-offs, SPICE/Python simulations, and interactive widgets**.
+
+Full deep-dive chapters are currently live for **[Chapter 4 — Solid-State Transformers (SST)](./docs/04-solid-state-transformers.md)** and **[Chapter 15 — Energy Per Token](./docs/15-energy-per-token.md)**, together with 7 interactive in-browser Canvas simulation widgets across the book; additional circuit derivations for the remaining chapters are being added progressively.
 
 ## Quick Start
 
 ```bash
-# Read the book locally
+# Read the interactive book locally
 cd docs && python3 -m http.server 8080
 # → http://localhost:8080
 
-# Run a SPICE testbench
-cd spice/testbenches && ngspice -b vrm_transient.cir
+# Run an SST SPICE testbench
+cd spice/testbenches && ngspice -b sst_itcm_acdc.cir
 
-# Python notebook
-cd notebooks/02-gpu-transients && jupyter notebook decoupling_analysis.ipynb
+# Open the SST SiC device-selection Python notebook
+cd notebooks/sst && jupyter notebook device-selection-optimizer.ipynb
 ```
 
 ## Repository Structure
