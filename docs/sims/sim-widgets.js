@@ -754,6 +754,245 @@
     frame();
   });
 
+  // ══════════════════════════════════════════════════════════════
+  //  SIM 8: Rack Thermal Wall — Air vs. Water & Traction/EV Comparison
+  // ══════════════════════════════════════════════════════════════
+  register('rack-thermal-wall', function (container) {
+    var PRESETS = [
+      { name: 'Legacy CPU (15 kW)',     qKw: 15,   dtAir: 15, dtWater: 10, liqPct: 0,  volL: 1200 },
+      { name: 'DGX H100 (40 kW)',       qKw: 40,   dtAir: 15, dtWater: 10, liqPct: 0,  volL: 1300 },
+      { name: 'GB200 NVL72 (132 kW)',   qKw: 132,  dtAir: 15, dtWater: 10, liqPct: 85, volL: 1350 },
+      { name: 'Vera Rubin (250 kW)',    qKw: 250,  dtAir: 15, dtWater: 12, liqPct: 90, volL: 1350 },
+      { name: 'Kyber / Rubin Ultra (600 kW)', qKw: 600, dtAir: 15, dtWater: 15, liqPct: 95, volL: 1400 },
+      { name: '1 MW Next-Gen AI Rack',  qKw: 1000, dtAir: 15, dtWater: 15, liqPct: 98, volL: 1400 },
+      { name: '6 MW Locomotive Converter (90 kW loss)', qKw: 90, dtAir: 15, dtWater: 10, liqPct: 85, volL: 1200 },
+      { name: '300 kW EV SiC Inverter (6 kW loss)',     qKw: 6,  dtAir: 15, dtWater: 8,  liqPct: 100, volL: 8 }
+    ];
+
+    var p = { presetIdx: 2, qKw: 132, dtAir: 15, dtWater: 10, openAreaM2: 0.65 };
+
+    var card = createCard(container, {
+      id: 'rack-thermal', badge: 'FIRST-PRINCIPLES THERMAL',
+      title: 'The 1 MW Thermal Wall — Air vs. Water Flow & Traction/EV Comparison',
+      subtitle: 'Q = m_dot * cp * dT: Why air hits a Mach/acoustic wall above ~50 kW while water uses a garden hose'
+    });
+
+    var slPreset, slQ, slDtAir, slDtWater;
+
+    slPreset = createSlider(card.controls, {
+      id: 'rt-preset', label: 'System Preset', min: 0, max: PRESETS.length - 1, step: 1, value: p.presetIdx, unit: '',
+      format: function (v) { return PRESETS[Math.round(v)].name; },
+      onChange: function (v) {
+        var idx = Math.round(v);
+        p.presetIdx = idx;
+        var pr = PRESETS[idx];
+        p.qKw = pr.qKw;
+        p.dtAir = pr.dtAir;
+        p.dtWater = pr.dtWater;
+        if (slQ) { slQ.value = p.qKw; container.querySelector('#rt-q-val').textContent = p.qKw + ' kW'; }
+        if (slDtAir) { slDtAir.value = p.dtAir; container.querySelector('#rt-dtair-val').textContent = p.dtAir + ' °C'; }
+        if (slDtWater) { slDtWater.value = p.dtWater; container.querySelector('#rt-dtwat-val').textContent = p.dtWater + ' °C'; }
+      }
+    });
+
+    slQ = createSlider(card.controls, {
+      id: 'rt-q', label: 'Heat Dissipated Q_loss (kW)', min: 5, max: 1000, step: 5, value: p.qKw, unit: ' kW',
+      onChange: function (v) { p.qKw = v; }
+    });
+
+    slDtAir = createSlider(card.controls, {
+      id: 'rt-dtair', label: 'Air ΔT (Inlet→Exhaust)', min: 5, max: 30, step: 1, value: p.dtAir, unit: ' °C',
+      onChange: function (v) { p.dtAir = v; }
+    });
+
+    slDtWater = createSlider(card.controls, {
+      id: 'rt-dtwat', label: 'Water ΔT (Supply→Return)', min: 5, max: 25, step: 1, value: p.dtWater, unit: ' °C',
+      onChange: function (v) { p.dtWater = v; }
+    });
+
+    var kAirFlow  = createKPI(card.kpis, { id: 'k-airflow',  label: '100% Air Flow',  value: '-- m³/s' });
+    var kAirVel   = createKPI(card.kpis, { id: 'k-airvel',   label: 'Rack Face Vel.', value: '-- m/s' });
+    var kFanPwr   = createKPI(card.kpis, { id: 'k-fanpwr',   label: 'Fan Power (∝Q³)', value: '-- kW' });
+    var kWatFlow  = createKPI(card.kpis, { id: 'k-watflow',  label: '100% Water Flow', value: '-- L/min' });
+    var kRatio    = createKPI(card.kpis, { id: 'k-volratio', label: 'Vol. Ratio (Air/H₂O)', value: '-- ×' });
+    var kRegime   = createKPI(card.kpis, { id: 'k-regime',   label: 'Cooling Verdict', value: '--' });
+
+    // Physics constants
+    var RHO_AIR   = 1.18;   // kg/m^3 at ~25 C
+    var CP_AIR    = 1.005;  // kJ/(kg*K)
+    var RHO_WATER = 997.0;  // kg/m^3
+    var CP_WATER  = 4.184;  // kJ/(kg*K)
+
+    function computeFlows(qKw, dtAir, dtWat) {
+      // Q [kW = kJ/s] = rho * V_dot [m^3/s] * cp [kJ/kgK] * dT [K]
+      var vDotAir_m3s  = qKw / (RHO_AIR * CP_AIR * dtAir);
+      var vDotAir_cfm  = vDotAir_m3s * 2118.88;
+      var vFace_ms     = vDotAir_m3s / p.openAreaM2; // across 0.65 m^2 open perforated door area
+      var vFace_kmh    = vFace_ms * 3.6;
+
+      // Fan affinity law: dP_air scales with v^2, P_fan = V_dot * dP / eta_fan ~ k * V_dot^3
+      // Calibrated to realistic server rack impedance: at 40 kW (2.25 m^3/s), dP ~ 650 Pa, eta=0.55 => ~2.7 kW fan power
+      var dP_air_Pa    = 128.0 * Math.pow(vDotAir_m3s, 1.85);
+      var pFan_kW      = (vDotAir_m3s * dP_air_Pa) / (0.55 * 1000.0);
+
+      // Water flow
+      var vDotWat_m3s  = qKw / (RHO_WATER * CP_WATER * dtWat);
+      var vDotWat_Lmin = vDotWat_m3s * 1000.0 * 60.0;
+      // Water pump power (dP ~ 1.5 bar = 150 kPa at full flow, eta=0.65)
+      var pPump_kW     = (vDotWat_m3s * 150000.0) / (0.65 * 1000.0);
+
+      var volRatio     = vDotAir_m3s / Math.max(1e-9, vDotWat_m3s);
+
+      return {
+        vDotAir_m3s: vDotAir_m3s,
+        vDotAir_cfm: vDotAir_cfm,
+        vFace_ms: vFace_ms,
+        vFace_kmh: vFace_kmh,
+        pFan_kW: pFan_kW,
+        vDotWat_Lmin: vDotWat_Lmin,
+        pPump_kW: pPump_kW,
+        volRatio: volRatio
+      };
+    }
+
+    function frame() {
+      var w = card.canvas.clientWidth, h = card.canvas.clientHeight;
+      drawGrid(card.ctx, w, h, { xDivs: 10, yDivs: 6, zeroLine: false });
+
+      var cur = computeFlows(p.qKw, p.dtAir, p.dtWater);
+
+      // Margins for dual-axis curve plot (Q from 10 kW to 1000 kW)
+      var leftM = 46, rightM = 52, topM = 42, botM = 28;
+      var plotW = Math.max(100, w - leftM - rightM);
+      var plotH = Math.max(80, h - topM - botM);
+
+      // Shaded Air-Cooling Wall Zone (Q > 50 kW)
+      var xWall50 = leftM + (50 / 1000) * plotW;
+      card.ctx.fillStyle = 'rgba(230, 25, 60, 0.11)';
+      card.ctx.fillRect(xWall50, topM, leftM + plotW - xWall50, plotH);
+
+      // Vertical transition line at 50 kW
+      card.ctx.strokeStyle = '#FF4444';
+      card.ctx.lineWidth = 1.5;
+      card.ctx.setLineDash([5, 4]);
+      card.ctx.beginPath();
+      card.ctx.moveTo(xWall50, topM);
+      card.ctx.lineTo(xWall50, topM + plotH);
+      card.ctx.stroke();
+      card.ctx.setLineDash([]);
+
+      // Plot curves across 0..1000 kW:
+      // 1) Air Flow (m^3/s) normalized to 60 m^3/s full scale (cyan)
+      // 2) Air Parasitic Fan Power (% of Rack Q, capped at 100%) (red/amber)
+      // 3) Water Flow (L/min) normalized to 1200 L/min full scale (green)
+      var N = 200;
+      var maxAirScale = 60.0;   // m^3/s
+      var maxWatScale = 1200.0; // L/min
+
+      // Draw Air Flow curve
+      card.ctx.strokeStyle = '#00F0FF';
+      card.ctx.lineWidth = 2.2;
+      card.ctx.beginPath();
+      for (var i = 0; i < N; i++) {
+        var q = 5 + (i / (N - 1)) * 995;
+        var r = computeFlows(q, p.dtAir, p.dtWater);
+        var x = leftM + (q / 1000) * plotW;
+        var y = topM + plotH - Math.min(1.0, r.vDotAir_m3s / maxAirScale) * plotH;
+        if (i === 0) card.ctx.moveTo(x, y); else card.ctx.lineTo(x, y);
+      }
+      card.ctx.stroke();
+
+      // Draw Fan Power Parasitic Curve (Fan kW as % of IT Load, 0..100%)
+      card.ctx.strokeStyle = '#FFB800';
+      card.ctx.lineWidth = 2.0;
+      card.ctx.beginPath();
+      for (var j = 0; j < N; j++) {
+        var q2 = 5 + (j / (N - 1)) * 995;
+        var r2 = computeFlows(q2, p.dtAir, p.dtWater);
+        var fanPct = (r2.pFan_kW / q2); // 0 to 1.0+
+        var x2 = leftM + (q2 / 1000) * plotW;
+        var y2 = topM + plotH - Math.min(1.0, fanPct) * plotH;
+        if (j === 0) card.ctx.moveTo(x2, y2); else card.ctx.lineTo(x2, y2);
+      }
+      card.ctx.stroke();
+
+      // Draw Water Flow curve (L/min)
+      card.ctx.strokeStyle = '#00FFCC';
+      card.ctx.lineWidth = 2.2;
+      card.ctx.beginPath();
+      for (var k = 0; k < N; k++) {
+        var q3 = 5 + (k / (N - 1)) * 995;
+        var r3 = computeFlows(q3, p.dtAir, p.dtWater);
+        var x3 = leftM + (q3 / 1000) * plotW;
+        var y3 = topM + plotH - Math.min(1.0, r3.vDotWat_Lmin / maxWatScale) * plotH;
+        if (k === 0) card.ctx.moveTo(x3, y3); else card.ctx.lineTo(x3, y3);
+      }
+      card.ctx.stroke();
+
+      // Reference milestones along X-axis
+      var markers = [
+        { q: 40,   lbl: '40kW Air Limit' },
+        { q: 90,   lbl: '90kW Loco PE' },
+        { q: 132,  lbl: '132kW GB200' },
+        { q: 600,  lbl: '600kW Kyber' },
+        { q: 1000, lbl: '1MW' }
+      ];
+      card.ctx.font = '10px "Share Tech Mono", monospace';
+      card.ctx.textAlign = 'center';
+      for (var m = 0; m < markers.length; m++) {
+        var mx = leftM + (markers[m].q / 1000) * plotW;
+        card.ctx.fillStyle = 'rgba(230,249,255,0.6)';
+        card.ctx.fillText(markers[m].lbl, mx, h - 8);
+      }
+
+      // Current operating vertical cursor
+      var curX = leftM + (p.qKw / 1000) * plotW;
+      card.ctx.strokeStyle = '#E6F9FF';
+      card.ctx.lineWidth = 1.5;
+      card.ctx.beginPath();
+      card.ctx.moveTo(curX, topM);
+      card.ctx.lineTo(curX, topM + plotH);
+      card.ctx.stroke();
+
+      // Operating dots
+      var yAirDot = topM + plotH - Math.min(1.0, cur.vDotAir_m3s / maxAirScale) * plotH;
+      var yWatDot = topM + plotH - Math.min(1.0, cur.vDotWat_Lmin / maxWatScale) * plotH;
+      card.ctx.fillStyle = '#00F0FF';
+      card.ctx.beginPath(); card.ctx.arc(curX, yAirDot, 5, 0, Math.PI * 2); card.ctx.fill();
+      card.ctx.fillStyle = '#00FFCC';
+      card.ctx.beginPath(); card.ctx.arc(curX, yWatDot, 5, 0, Math.PI * 2); card.ctx.fill();
+
+      // Legends & annotations
+      card.ctx.textAlign = 'left';
+      drawLabel(card.ctx, 'Cyan: Air Flow (0–60 m³/s)  |  Amber: Air Fan Power (% of Q_rack)  |  Green: Water Flow (0–1200 L/min)', leftM, 16, '#E6F9FF');
+      drawLabel(card.ctx, '◄ Air OK (<50 kW) | LIQUID MANDATORY (Air velocity = hurricane / Fan power explodes ∝ Q³) ►', xWall50 + 6, 32, '#FF6677');
+
+      // Update KPIs
+      kAirFlow.textContent = cur.vDotAir_m3s.toFixed(1) + ' m³/s (' + Math.round(cur.vDotAir_cfm).toLocaleString() + ' CFM)';
+      kAirFlow.className = 'sim-kpi-val ' + (cur.vDotAir_m3s < 3.0 ? 'good' : cur.vDotAir_m3s < 6.0 ? 'warn' : 'danger');
+
+      kAirVel.textContent = cur.vFace_ms.toFixed(1) + ' m/s (' + Math.round(cur.vFace_kmh) + ' km/h)';
+      kAirVel.className = 'sim-kpi-val ' + (cur.vFace_ms < 5.0 ? 'good' : cur.vFace_ms < 10.0 ? 'warn' : 'danger');
+
+      var fanDisplay = cur.pFan_kW > 999 ? (cur.pFan_kW / 1000).toFixed(1) + ' MW!' : cur.pFan_kW.toFixed(1) + ' kW';
+      kFanPwr.textContent = fanDisplay + ' (H₂O: ' + cur.pPump_kW.toFixed(2) + ' kW)';
+      kFanPwr.className = 'sim-kpi-val ' + (cur.pFan_kW < p.qKw * 0.1 ? 'good' : cur.pFan_kW < p.qKw * 0.25 ? 'warn' : 'danger');
+
+      kWatFlow.textContent = cur.vDotWat_Lmin.toFixed(1) + ' L/min (' + (cur.vDotWat_Lmin / 60).toFixed(2) + ' L/s)';
+      kWatFlow.className = 'sim-kpi-val good';
+
+      kRatio.textContent = Math.round(cur.volRatio).toLocaleString() + '× less vol.';
+      kRatio.className = 'sim-kpi-val good';
+
+      var verdict = p.qKw <= 45 ? 'AIR FEASIBLE' : p.qKw <= 80 ? 'HYBRID / RDHx' : p.qKw <= 600 ? 'DLC COLD-PLATE' : '100% LIQUID / 2-PHASE';
+      kRegime.textContent = verdict;
+      kRegime.className = 'sim-kpi-val ' + (p.qKw <= 45 ? 'good' : p.qKw <= 80 ? 'warn' : 'danger');
+
+      requestAnimationFrame(function () { safeFrame(frame, 'rack-thermal-wall'); });
+    }
+    setTimeout(function () { safeFrame(frame, 'rack-thermal-wall'); }, 50);
+  });
+
   // -- Export --
   window.SimWidgets = { register: register, mount: mount };
 })();
