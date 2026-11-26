@@ -20,7 +20,7 @@
     factory(container);
   }
 
-  // ── Card scaffold ──
+  // ── Card scaffold (controls on right side) ──
   function createCard(container, opts) {
     container.innerHTML =
       '<div class="sim-card">' +
@@ -37,6 +37,44 @@
             '<canvas class="sim-scope" id="' + opts.id + '-canvas"></canvas>' +
             '<div class="sim-kpis" id="' + opts.id + '-kpis"></div>' +
           '</div>' +
+        '</div>' +
+      '</div>';
+
+    var controls = container.querySelector('#' + opts.id + '-controls');
+    var canvas   = container.querySelector('#' + opts.id + '-canvas');
+    var kpis     = container.querySelector('#' + opts.id + '-kpis');
+    var ctx      = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.getBoundingClientRect();
+      canvas.width  = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    return { controls: controls, canvas: canvas, kpis: kpis, ctx: ctx, resizeCanvas: resizeCanvas };
+  }
+
+  // ── Card scaffold with controls at bottom (for wide plots) ──
+  function createCardBottomControls(container, opts) {
+    container.innerHTML =
+      '<div class="sim-card sim-card-wide">' +
+        '<div class="sim-header">' +
+          '<div class="sim-title-wrap">' +
+            '<span class="sim-badge">' + (opts.badge || 'LIVE') + '</span>' +
+            '<span class="sim-title">' + opts.title + '</span>' +
+          '</div>' +
+          '<span class="sim-subtitle">' + (opts.subtitle || '') + '</span>' +
+        '</div>' +
+        '<div class="sim-body sim-body-wide">' +
+          '<div class="sim-canvas-wrap sim-canvas-wrap-wide">' +
+            '<canvas class="sim-scope" id="' + opts.id + '-canvas"></canvas>' +
+          '</div>' +
+          '<div class="sim-kpis sim-kpis-bottom" id="' + opts.id + '-kpis"></div>' +
+          '<div class="sim-controls sim-controls-bottom" id="' + opts.id + '-controls"></div>' +
         '</div>' +
       '</div>';
 
@@ -771,10 +809,11 @@
 
     var p = { presetIdx: 2, qKw: 132, dtAir: 15, dtWater: 10, openAreaM2: 0.65 };
 
-    var card = createCard(container, {
+    // Use bottom-controls layout for wider plot
+    var card = createCardBottomControls(container, {
       id: 'rack-thermal', badge: 'FIRST-PRINCIPLES THERMAL',
       title: 'The 1 MW Thermal Wall — Air vs. Water Flow & Traction/EV Comparison',
-      subtitle: 'Q = m_dot * cp * dT: Why air hits a Mach/acoustic wall above ~50 kW while water uses a garden hose'
+      subtitle: 'Q = m_dot * cp * dT: Why air hits a physics wall above ~50 kW while water uses a garden hose'
     });
 
     var slPreset, slQ, slDtAir, slDtWater;
@@ -882,16 +921,16 @@
       card.ctx.setLineDash([]);
 
       // Plot curves across 0..1000 kW:
-      // 1) Air Flow (m^3/s) normalized to 60 m^3/s full scale (cyan)
-      // 2) Air Parasitic Fan Power (% of Rack Q, capped at 100%) (red/amber)
+      // 1) Air Flow (m^3/s) normalized to 60 m^3/s full scale (magenta)
+      // 2) Air Parasitic Fan Power (% of Rack Q, capped at 100%) (amber)
       // 3) Water Flow (L/min) normalized to 1200 L/min full scale (green)
       var N = 200;
       var maxAirScale = 60.0;   // m^3/s
       var maxWatScale = 1200.0; // L/min
 
-      // Draw Air Flow curve
-      card.ctx.strokeStyle = '#00F0FF';
-      card.ctx.lineWidth = 2.2;
+      // Draw Air Flow curve (magenta)
+      card.ctx.strokeStyle = '#FF00FF';
+      card.ctx.lineWidth = 2.5;
       card.ctx.beginPath();
       for (var i = 0; i < N; i++) {
         var q = 5 + (i / (N - 1)) * 995;
@@ -902,8 +941,8 @@
       }
       card.ctx.stroke();
 
-      // Draw Fan Power Parasitic Curve (Fan kW as % of IT Load, 0..100%)
-      card.ctx.strokeStyle = '#FFB800';
+      // Draw Fan Power Parasitic Curve (orange)
+      card.ctx.strokeStyle = '#FF8800';
       card.ctx.lineWidth = 2.0;
       card.ctx.beginPath();
       for (var j = 0; j < N; j++) {
@@ -916,9 +955,9 @@
       }
       card.ctx.stroke();
 
-      // Draw Water Flow curve (L/min)
-      card.ctx.strokeStyle = '#00FFCC';
-      card.ctx.lineWidth = 2.2;
+      // Draw Water Flow curve (green)
+      card.ctx.strokeStyle = '#00FF88';
+      card.ctx.lineWidth = 2.5;
       card.ctx.beginPath();
       for (var k = 0; k < N; k++) {
         var q3 = 5 + (k / (N - 1)) * 995;
@@ -929,20 +968,25 @@
       }
       card.ctx.stroke();
 
-      // Reference milestones along X-axis
+      // X-axis title
+      card.ctx.textAlign = 'center';
+      card.ctx.fillStyle = '#E6F9FF';
+      card.ctx.font = '12px "Share Tech Mono", monospace';
+      card.ctx.fillText('Heat Dissipated Q_loss (kW)', leftM + plotW / 2, h - 20);
+
+      // Reference milestones along X-axis (fewer, non-overlapping)
       var markers = [
-        { q: 40,   lbl: '40kW Air Limit' },
-        { q: 90,   lbl: '90kW Loco PE' },
-        { q: 132,  lbl: '132kW GB200' },
-        { q: 600,  lbl: '600kW Kyber' },
-        { q: 1000, lbl: '1MW' }
+        { q: 40,   lbl: '40' },
+        { q: 132,  lbl: '132' },
+        { q: 250,  lbl: '250' },
+        { q: 600,  lbl: '600' },
+        { q: 1000, lbl: '1000' }
       ];
       card.ctx.font = '10px "Share Tech Mono", monospace';
-      card.ctx.textAlign = 'center';
       for (var m = 0; m < markers.length; m++) {
         var mx = leftM + (markers[m].q / 1000) * plotW;
-        card.ctx.fillStyle = 'rgba(230,249,255,0.6)';
-        card.ctx.fillText(markers[m].lbl, mx, h - 8);
+        card.ctx.fillStyle = 'rgba(230,249,255,0.7)';
+        card.ctx.fillText(markers[m].lbl, mx, h - 34);
       }
 
       // Current operating vertical cursor
@@ -954,18 +998,34 @@
       card.ctx.lineTo(curX, topM + plotH);
       card.ctx.stroke();
 
-      // Operating dots
+      // Operating dots with outlines for visibility
       var yAirDot = topM + plotH - Math.min(1.0, cur.vDotAir_m3s / maxAirScale) * plotH;
+      var yFanDot = topM + plotH - Math.min(1.0, (cur.pFan_kW / p.qKw)) * plotH;
       var yWatDot = topM + plotH - Math.min(1.0, cur.vDotWat_Lmin / maxWatScale) * plotH;
-      card.ctx.fillStyle = '#00F0FF';
-      card.ctx.beginPath(); card.ctx.arc(curX, yAirDot, 5, 0, Math.PI * 2); card.ctx.fill();
-      card.ctx.fillStyle = '#00FFCC';
-      card.ctx.beginPath(); card.ctx.arc(curX, yWatDot, 5, 0, Math.PI * 2); card.ctx.fill();
+      
+      card.ctx.strokeStyle = '#FF00FF'; card.ctx.fillStyle = '#FF00FF';
+      card.ctx.beginPath(); card.ctx.arc(curX, yAirDot, 6, 0, Math.PI * 2); card.ctx.fill();
+      card.ctx.strokeStyle = '#FF8800'; card.ctx.fillStyle = '#FF8800';
+      card.ctx.beginPath(); card.ctx.arc(curX, yFanDot, 5, 0, Math.PI * 2); card.ctx.fill();
+      card.ctx.strokeStyle = '#00FF88'; card.ctx.fillStyle = '#00FF88';
+      card.ctx.beginPath(); card.ctx.arc(curX, yWatDot, 6, 0, Math.PI * 2); card.ctx.fill();
 
       // Legends & annotations
       card.ctx.textAlign = 'left';
-      drawLabel(card.ctx, 'Cyan: Air Flow (0–60 m³/s)  |  Amber: Air Fan Power (% of Q_rack)  |  Green: Water Flow (0–1200 L/min)', leftM, 16, '#E6F9FF');
-      drawLabel(card.ctx, '◄ Air OK (<50 kW) | LIQUID MANDATORY (Air velocity = hurricane / Fan power explodes ∝ Q³) ►', xWall50 + 6, 32, '#FF6677');
+      card.ctx.font = '11px "Share Tech Mono", monospace';
+      drawLabel(card.ctx, 'Y-axis: Relative magnitude (normalized to max scale)', leftM, 14, '#5CE1E6');
+      
+      // Color-coded legend boxes
+      card.ctx.fillStyle = '#FF00FF'; card.ctx.fillRect(leftM, 24, 12, 12);
+      drawLabel(card.ctx, 'Air Flow (0–60 m³/s)', leftM + 16, 34, '#FF00FF');
+      
+      card.ctx.fillStyle = '#FF8800'; card.ctx.fillRect(leftM + 150, 24, 12, 12);
+      drawLabel(card.ctx, 'Fan Power (% of Q_rack)', leftM + 166, 34, '#FF8800');
+      
+      card.ctx.fillStyle = '#00FF88'; card.ctx.fillRect(leftM + 320, 24, 12, 12);
+      drawLabel(card.ctx, 'Water Flow (0–1200 L/min)', leftM + 336, 34, '#00FF88');
+      
+      drawLabel(card.ctx, '◄ Air OK (<50 kW) | LIQUID MANDATORY (velocity = hurricane / fan power ∝ Q³) ►', xWall50 + 6, 48, '#FF6677');
 
       // Update KPIs
       kAirFlow.textContent = cur.vDotAir_m3s.toFixed(1) + ' m³/s (' + Math.round(cur.vDotAir_cfm).toLocaleString() + ' CFM)';
