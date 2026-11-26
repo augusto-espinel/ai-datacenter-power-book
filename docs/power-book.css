@@ -387,28 +387,43 @@ body{font-family:var(--font-body);background:var(--bg-void);color:var(--text-bod
 }
 .sim-controls-top {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
   background: rgba(3, 6, 12, 0.65);
   padding: 12px;
   border-radius: 8px;
   border: 1px solid rgba(13, 64, 84, 0.6);
+  width: 100%;
+  box-sizing: border-box;
 }
 @media (max-width: 640px) {
   .sim-controls-top {
     grid-template-columns: 1fr;
   }
 }
+/* Fix slider control groups to prevent jitter when values change */
+.sim-controls-top .sim-control-group {
+  min-width: 0;
+}
+.sim-controls-top .sim-control-label {
+  width: 100%;
+}
+.sim-controls-top .sim-control-val {
+  min-width: 90px;
+  text-align: right;
+  flex-shrink: 0;
+}
 .sim-kpis-horizontal {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 0 2px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .sim-kpis-horizontal .sim-kpi {
   flex: 1 1 auto;
   min-width: 100px;
-  max-width: 1fr;
 }
 .sim-canvas-wrap-wide {
   flex: 1;
