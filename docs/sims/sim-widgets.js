@@ -58,8 +58,8 @@
     return { controls: controls, canvas: canvas, kpis: kpis, ctx: ctx, resizeCanvas: resizeCanvas };
   }
 
-  // ── Card scaffold with controls at bottom (for wide plots) ──
-  function createCardBottomControls(container, opts) {
+  // ── Card scaffold with controls at top (for wide plots) ──
+  function createCardTopControls(container, opts) {
     container.innerHTML =
       '<div class="sim-card sim-card-wide">' +
         '<div class="sim-header">' +
@@ -70,11 +70,11 @@
           '<span class="sim-subtitle">' + (opts.subtitle || '') + '</span>' +
         '</div>' +
         '<div class="sim-body sim-body-wide">' +
+          '<div class="sim-controls sim-controls-top" id="' + opts.id + '-controls"></div>' +
+          '<div class="sim-kpis sim-kpis-horizontal" id="' + opts.id + '-kpis"></div>' +
           '<div class="sim-canvas-wrap sim-canvas-wrap-wide">' +
             '<canvas class="sim-scope" id="' + opts.id + '-canvas"></canvas>' +
           '</div>' +
-          '<div class="sim-kpis sim-kpis-bottom" id="' + opts.id + '-kpis"></div>' +
-          '<div class="sim-controls sim-controls-bottom" id="' + opts.id + '-controls"></div>' +
         '</div>' +
       '</div>';
 
@@ -809,8 +809,8 @@
 
     var p = { presetIdx: 2, qKw: 132, dtAir: 15, dtWater: 10, openAreaM2: 0.65 };
 
-    // Use bottom-controls layout for wider plot
-    var card = createCardBottomControls(container, {
+    // Use top-controls layout for wider plot
+    var card = createCardTopControls(container, {
       id: 'rack-thermal', badge: 'FIRST-PRINCIPLES THERMAL',
       title: 'The 1 MW Thermal Wall — Air vs. Water Flow & Traction/EV Comparison',
       subtitle: 'Q = m_dot * cp * dT: Why air hits a physics wall above ~50 kW while water uses a garden hose'

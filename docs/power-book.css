@@ -374,7 +374,7 @@ body{font-family:var(--font-body);background:var(--bg-void);color:var(--text-bod
 }
 
 /* ══════════════════════════════════════════════════════════════
-   WIDE SIM LAYOUT (controls at bottom for larger plots)
+   WIDE SIM LAYOUT (controls at top for larger plots)
    ══════════════════════════════════════════════════════════════ */
 .sim-card-wide {
   /* Inherits from .sim-card */
@@ -382,34 +382,39 @@ body{font-family:var(--font-body);background:var(--bg-void);color:var(--text-bod
 .sim-body-wide {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
 }
-.sim-canvas-wrap-wide {
-  flex: 1;
-  min-height: 300px;
-}
-.sim-canvas-wrap-wide .sim-scope {
-  height: 320px;
-}
-.sim-kpis-bottom {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 8px;
-  padding: 0 4px;
-}
-.sim-controls-bottom {
+.sim-controls-top {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+  gap: 10px;
   background: rgba(3, 6, 12, 0.65);
-  padding: 14px;
+  padding: 12px;
   border-radius: 8px;
   border: 1px solid rgba(13, 64, 84, 0.6);
 }
 @media (max-width: 640px) {
-  .sim-controls-bottom {
+  .sim-controls-top {
     grid-template-columns: 1fr;
   }
+}
+.sim-kpis-horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 2px;
+}
+.sim-kpis-horizontal .sim-kpi {
+  flex: 1 1 auto;
+  min-width: 100px;
+  max-width: 1fr;
+}
+.sim-canvas-wrap-wide {
+  flex: 1;
+  min-height: 280px;
+}
+.sim-canvas-wrap-wide .sim-scope {
+  height: 340px;
 }
 
